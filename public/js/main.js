@@ -77,7 +77,6 @@ function flight() {
     defaults: { ease: 'none' },
     scrollTrigger: {
       trigger: '.flight', start: 'top top', end: `+=${N * 110}%`, pin: true, scrub: 1.2,
-      onUpdate: self => updateHud(self.progress * N),
     },
   });
 
@@ -93,31 +92,6 @@ function flight() {
     }
   }
   tl.to('.flight-progress span', { scaleX: 1, duration: N + .2 }, 0);
-}
-
-const HUD = [
-  { loc: 'ORBIT · TASHKENT', c: '41.2995° N  69.2401° E', alt: 408000, spd: 27600 },
-  { loc: 'TIAN SHAN', c: '42.0000° N  70.5000° E', alt: 5200, spd: 140 },
-  { loc: 'LONDON', c: '51.5072° N  0.1276° W', alt: 450, spd: 72 },
-  { loc: 'HONG KONG', c: '22.3193° N  114.1694° E', alt: 520, spd: 64 },
-  { loc: 'CAMPUS', c: '40.8075° N  73.9626° W', alt: 60, spd: 28 },
-  { loc: 'GRADUATION', c: '1.2838° N  103.8591° E', alt: 12, spd: 9 },
-];
-const hudEls = {};
-function updateHud(p) {
-  hudEls.loc ||= document.getElementById('hud-loc');
-  hudEls.coord ||= document.getElementById('hud-coord');
-  hudEls.alt ||= document.getElementById('hud-alt');
-  hudEls.spd ||= document.getElementById('hud-spd');
-  const i = Math.min(HUD.length - 1, Math.floor(p));
-  const f = Math.min(1, p - i), next = HUD[Math.min(HUD.length - 1, i + 1)], cur = HUD[i];
-  // высота падает логарифмически — ощущение снижения дрона
-  const alt = Math.exp(Math.log(cur.alt) + (Math.log(next.alt) - Math.log(cur.alt)) * Math.max(0, (f - .7) / .3));
-  const spd = cur.spd + (next.spd - cur.spd) * Math.max(0, (f - .7) / .3);
-  hudEls.loc.textContent = cur.loc;
-  hudEls.coord.textContent = cur.c;
-  hudEls.alt.textContent = Math.round(alt).toLocaleString('ru-RU');
-  hudEls.spd.textContent = Math.round(spd).toLocaleString('ru-RU');
 }
 
 // --- горизонтальный пролёт по городам
