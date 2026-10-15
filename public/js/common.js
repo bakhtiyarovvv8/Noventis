@@ -31,7 +31,7 @@ const UI = {
   city_seoul: L('Сеул — IT, медицина, K-контент', 'Seoul — IT, medicine, K-content'),
   cta_title: L('Готов узнать, кем станешь?', 'Ready to find out who you’ll become?'),
   cta_sub: L('Регистрация бесплатная. Результаты сохраняются в твоём кабинете.', 'Sign-up is free. Your results are saved in your dashboard.'),
-  footer: L('Kelajak — «будущее» по-узбекски. Сделано для тех, кто ищет свой путь.', 'Kelajak means “future” in Uzbek. Made for those finding their way.'),
+  footer: L('Noventis — сделано для тех, кто ищет свой путь.', 'Noventis — made for those finding their way.'),
 
   // auth
   auth_quote: L('«Кто знает, куда идёт, — тому и ветер попутный»', '“If you know where you’re going, every wind is fair”'),

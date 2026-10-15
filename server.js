@@ -1,4 +1,4 @@
-// Kelajak — сервер без внешних зависимостей: http + node:sqlite + crypto.scrypt
+// Noventis — сервер без внешних зависимостей: http + node:sqlite + crypto.scrypt
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -10,7 +10,7 @@ const PUBLIC = path.join(__dirname, 'public');
 const SESSION_DAYS = 30;
 
 fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
-const db = new DatabaseSync(path.join(__dirname, 'data', 'kelajak.db'));
+const db = new DatabaseSync(path.join(__dirname, 'data', 'noventis.db'));
 db.exec(`
   PRAGMA journal_mode = WAL;
   CREATE TABLE IF NOT EXISTS users (
@@ -207,7 +207,7 @@ http.createServer(async (req, res) => {
     console.error(e);
     json(res, 500, { error: 'server_error' });
   }
-}).listen(PORT, () => console.log(`\n  Kelajak запущен →  http://localhost:${PORT}\n`));
+}).listen(PORT, () => console.log(`\n  Noventis запущен →  http://localhost:${PORT}\n`));
 
 // чистка просроченных сессий раз в час
 setInterval(() => db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now()), 36e5).unref();

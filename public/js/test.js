@@ -352,7 +352,7 @@ function renderPrep(s) {
     motiv: L('Дисциплина: техника Pomodoro, маленькие ежедневные цели, учись с другом или в Telegram-группе.', 'Discipline: Pomodoro, small daily goals, study with a friend or a Telegram group.'),
     docs: L('Документы: начни мотивационное письмо за 3 месяца, покажи 2–3 людям, перепиши минимум 4 раза.', 'Documents: start your motivation letter 3 months early, show it to 2–3 people, rewrite 4+ times.'),
     money: L('Финансы: целься в полные гранты (Türkiye Bursları, GKS, Stipendium Hungaricum) и бесплатные вузы Германии.', 'Money: aim for full grants (Türkiye Bursları, GKS, Stipendium Hungaricum) and tuition-free German universities.'),
-    choice: L('Выбор: пройди тест «Университет» в Kelajak и поговори с 2–3 студентами выбранной сферы.', 'Choice: take Kelajak’s “University” test and talk to 2–3 students in that field.'),
+    choice: L('Выбор: пройди тест «Университет» в Noventis и поговори с 2–3 студентами выбранной сферы.', 'Choice: take Noventis’s “University” test and talk to 2–3 students in that field.'),
   };
   const grants = [...new Set([...s.targets.filter(x => x !== 'uzp'), 'all'])].flatMap(k => (GRANTS[k] || []).map(tx));
   const res = ['Khan Academy — ' + (ru ? 'математика, наука' : 'math, science'), 'British Council / IELTS Liz — IELTS',
