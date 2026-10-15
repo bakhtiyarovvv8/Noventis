@@ -1,0 +1,8 @@
+{
+  "name": "kelajak",
+  "version": "1.0.0",
+  "description": "Kelajak — профориентация: тест способностей, вузы мира, профессии, план подготовки",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=22.13" }
+}

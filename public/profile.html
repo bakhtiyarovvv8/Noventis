@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kelajak — кабинет</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="test-page">
+  <div class="test-bg"><img src="/img/hongkong.jpg" alt=""></div>
+  <header class="nav scrolled">
+    <div class="container">
+      <a href="/" class="wordmark">Kelajak<span>.</span></a>
+      <div class="nav-right">
+        <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+        <button class="btn btn-ghost" style="height:40px;font-size:14px" onclick="logout()" data-i18n="nav_logout"></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="profile-wrap" id="app"></main>
+
+  <script src="/vendor/gsap.min.js"></script>
+  <script src="/js/data.js"></script>
+  <script src="/js/common.js"></script>
+  <script>
+    let results = [];
+    const app = document.getElementById('app');
+
+    function resultTitle(r) {
+      const s = r.summary;
+      if (r.category === 'prep') return FIELDS[s.field] ? tx(FIELDS[s.field].name) : '';
+      return (s.fields || []).slice(0, 3).map(f => `${tx(FIELDS[f.id].name)} ${f.pct}%`).join(' · ');
+    }
+
+    function render(animate) {
+      const since = new Date(ME.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      app.innerHTML = `
+        <div class="profile-top">
+          <div class="big-avatar">${escapeHtml(ME.name[0]).toUpperCase()}</div>
+          <div><h1>${t('hello')}, ${escapeHtml(ME.name)}</h1><p>${escapeHtml(ME.email)} · ${t('member_since')} ${since}</p></div>
+        </div>
+        <span class="kicker">${t('new_test')}</span>
+        <div class="quick" style="margin-top:18px">
+          ${Object.entries(CATEGORIES).map(([k, c]) => `<a href="/test?cat=${k}"><img src="${c.img}" alt="">${tx(c.title)} →</a>`).join('')}
+        </div>
+        <span class="kicker">${t('my_results')}</span>
+        <div class="res-list" style="margin-top:18px">
+          ${results.length ? results.map(r => `
+            <div class="res-item" data-id="${r.id}">
+              <div class="glyph">${r.category === 'prep' ? '✎' : r.category === 'work' ? '◆' : '▲'}</div>
+              <div class="meta"><b>${tx(CATEGORIES[r.category].title)}</b>
+                <span>${new Date(r.created_at.replace(' ', 'T') + 'Z').toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })} · ${resultTitle(r)}</span></div>
+              <div class="actions">
+                <a class="btn btn-gold" href="/test?result=${r.id}">${t('open')}</a>
+                <button class="btn btn-ghost del">${t('delete')}</button>
+              </div>
+            </div>`).join('') : `<div class="empty">${t('no_results')}</div>`}
+        </div>`;
+      app.querySelectorAll('.del').forEach(b => b.onclick = async () => {
+        const item = b.closest('.res-item');
+        await api('/api/results/' + item.dataset.id, { method: 'DELETE' });
+        gsap.to(item, { opacity: 0, x: 40, height: 0, padding: 0, margin: 0, duration: .5, ease: 'power2.in', onComplete: () => {
+          results = results.filter(r => r.id !== +item.dataset.id); render(false);
+        }});
+      });
+      if (animate) gsap.from('.profile-top, .kicker, .quick a, .res-item, .empty', { y: 30, opacity: 0, stagger: .06, duration: 1, ease: 'expo.out' });
+    }
+
+    document.addEventListener('langchange', () => render(false));
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!await loadMe()) { location.href = '/auth?next=/profile'; return; }
+      const r = await api('/api/results');
+      results = r.data.results || [];
+      render(true);
+    });
+  </script>
+</body>
+</html>

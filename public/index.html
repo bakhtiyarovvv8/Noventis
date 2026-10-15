@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kelajak — найди свой путь</title>
+  <meta name="description" content="Профориентация для молодёжи Узбекистана: тест способностей, вузы мира, профессии и план подготовки.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preload" as="image" href="/img/space.jpg">
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <a href="/" class="wordmark">Kelajak<span>.</span></a>
+      <nav class="nav-links">
+        <a href="#flight" data-i18n="nav_world"></a>
+        <a href="#tracks" data-i18n="nav_tracks"></a>
+        <a href="#how" data-i18n="nav_how"></a>
+      </nav>
+      <div class="nav-right">
+        <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+        <div class="nav-auth"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-media"><img src="/img/space.jpg" alt="" fetchpriority="high"></div>
+    <div class="container hero-content">
+      <span class="kicker hero-anim" data-i18n="hero_kicker"></span>
+      <h1 class="hero-title" data-i18n="hero_title"></h1>
+      <p class="sub hero-anim" data-i18n="hero_sub"></p>
+      <div class="hero-cta hero-anim">
+        <a href="#tracks" class="btn btn-gold btn-lg"><span data-i18n="start"></span><span class="arrow">→</span></a>
+        <span class="hero-meta" data-i18n="minutes"></span>
+      </div>
+    </div>
+    <div class="scroll-cue" data-i18n="scroll"></div>
+  </section>
+
+  <!-- DRONE FLIGHT -->
+  <section class="flight" id="flight">
+    <div class="scene"><img src="/img/earth.jpg" alt=""></div>
+    <div class="scene"><img src="/img/clouds.jpg" alt=""></div>
+    <div class="scene"><img src="/img/london.jpg" alt=""></div>
+    <div class="scene"><img src="/img/hongkong.jpg" alt=""></div>
+    <div class="scene"><img src="/img/campus.jpg" alt=""></div>
+    <div class="scene"><img src="/img/graduation.jpg" alt=""></div>
+
+    <div class="flight-captions">
+      <div class="caption"><div class="num">01 / 06</div><h3 data-i18n="fly_1t"></h3><p data-i18n="fly_1s"></p></div>
+      <div class="caption"><div class="num">02 / 06</div><h3 data-i18n="fly_2t"></h3><p data-i18n="fly_2s"></p></div>
+      <div class="caption"><div class="num">03 / 06</div><h3 data-i18n="fly_3t"></h3><p data-i18n="fly_3s"></p></div>
+      <div class="caption"><div class="num">04 / 06</div><h3 data-i18n="fly_4t"></h3><p data-i18n="fly_4s"></p></div>
+      <div class="caption"><div class="num">05 / 06</div><h3 data-i18n="fly_5t"></h3><p data-i18n="fly_5s"></p></div>
+      <div class="caption"><div class="num">06 / 06</div><h3 data-i18n="fly_6t"></h3><p data-i18n="fly_6s"></p></div>
+    </div>
+
+    <div class="hud">
+      <div class="frame"><i></i><i></i><i></i><i></i></div>
+      <div class="tl"><span class="rec">REC</span><br>4K · 60FPS</div>
+      <div class="tr"><span id="hud-loc">TASHKENT</span><br><span id="hud-coord">41.2995° N  69.2401° E</span></div>
+      <div class="bl">ALT <span id="hud-alt">408 000</span> M</div>
+      <div class="br">SPD <span id="hud-spd">27 600</span> KM/H</div>
+    </div>
+    <div class="flight-progress"><span></span></div>
+  </section>
+
+  <!-- TRACKS -->
+  <section class="section" id="tracks">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="kicker" data-i18n="tracks_kicker"></span>
+        <h2 data-i18n="tracks_title"></h2>
+      </div>
+      <div class="tracks-grid" id="tracks-grid"></div>
+    </div>
+  </section>
+
+  <!-- HOW -->
+  <section class="section how" id="how">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="kicker" data-i18n="how_kicker"></span>
+        <h2 data-i18n="how_title"></h2>
+      </div>
+      <div class="steps reveal">
+        <div class="step"><div class="n">01</div><h3 data-i18n="how_1t"></h3><p data-i18n="how_1s"></p></div>
+        <div class="step"><div class="n">02</div><h3 data-i18n="how_2t"></h3><p data-i18n="how_2s"></p></div>
+        <div class="step"><div class="n">03</div><h3 data-i18n="how_3t"></h3><p data-i18n="how_3s"></p></div>
+      </div>
+      <div class="stats">
+        <div class="stat reveal"><b data-count="13">0</b><span data-i18n="stat_fields"></span></div>
+        <div class="stat reveal"><b data-count="90" data-plus>0</b><span data-i18n="stat_unis"></span></div>
+        <div class="stat reveal"><b data-count="25" data-plus>0</b><span data-i18n="stat_countries"></span></div>
+        <div class="stat reveal"><b data-count="14">0</b><span data-i18n="stat_grants"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WORLD (horizontal) -->
+  <section class="world">
+    <div class="world-pin">
+      <div class="container world-head">
+        <span class="kicker" data-i18n="world_kicker"></span>
+        <h2 style="margin-top:18px" data-i18n="world_title"></h2>
+      </div>
+      <div class="world-track">
+        <figure class="city"><img src="/img/tokyo.jpg" alt="Tokyo" loading="lazy"><figcaption data-i18n="city_tokyo"></figcaption></figure>
+        <figure class="city"><img src="/img/london.jpg" alt="London" loading="lazy"><figcaption data-i18n="city_london"></figcaption></figure>
+        <figure class="city"><img src="/img/chicago.jpg" alt="Chicago" loading="lazy"><figcaption data-i18n="city_chicago"></figcaption></figure>
+        <figure class="city"><img src="/img/hongkong.jpg" alt="Hong Kong" loading="lazy"><figcaption data-i18n="city_hk"></figcaption></figure>
+        <figure class="city"><img src="/img/students.jpg" alt="Students" loading="lazy"><figcaption data-i18n="city_seoul"></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="bg"><img src="/img/graduation.jpg" alt="" loading="lazy"></div>
+    <div class="inner">
+      <h2 class="reveal" data-i18n="cta_title"></h2>
+      <p class="reveal" data-i18n="cta_sub"></p>
+      <a href="#tracks" class="btn btn-gold btn-lg reveal"><span data-i18n="start"></span><span class="arrow">→</span></a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <span class="wordmark" style="font-size:16px">Kelajak<span>.</span></span>
+      <span data-i18n="footer"></span>
+    </div>
+  </footer>
+
+  <script src="/vendor/gsap.min.js"></script>
+  <script src="/vendor/ScrollTrigger.min.js"></script>
+  <script src="/vendor/lenis.min.js"></script>
+  <script src="/js/data.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
