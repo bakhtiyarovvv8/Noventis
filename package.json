@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "description": "Noventis — профориентация: тест способностей, вузы мира, профессии, план подготовки",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=22.13" }
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "@libsql/client": "0.15.15"
+  }
 }

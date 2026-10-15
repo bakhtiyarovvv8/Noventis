@@ -1,53 +1,90 @@
-// Noventis — сервер без внешних зависимостей: http + node:sqlite + crypto.scrypt
+// Noventis — сервер: http + база Turso (libSQL, тот же SQLite) + crypto.scrypt
 const http = require('node:http');
 const fs = require('node:fs');
+const net = require('node:net');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { DatabaseSync } = require('node:sqlite');
+const { createClient } = require('@libsql/client');
+
+// --- настройки из .env (локально) или из переменных окружения (на Render)
+try {
+  for (const line of fs.readFileSync(path.join(__dirname, '.env'), 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+    if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2');
+  }
+} catch { /* .env нет — берём переменные окружения */ }
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
 const SESSION_DAYS = 30;
+// Секрет, который знает только прокси на Cloudflare. Задан → сервер принимает /api только через Cloudflare.
+const PROXY_KEY = process.env.PROXY_KEY || '';
+const PROD = process.env.NODE_ENV === 'production';
 
+// Без TURSO_DATABASE_URL работаем с локальным файлом — удобно для разработки.
 fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
-const db = new DatabaseSync(path.join(__dirname, 'data', 'noventis.db'));
-db.exec(`
-  PRAGMA journal_mode = WAL;
-  CREATE TABLE IF NOT EXISTS users (
+const db = createClient({
+  url: process.env.TURSO_DATABASE_URL || 'file:' + path.join(__dirname, 'data', 'noventis.db').replace(/\\/g, '/'),
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+const one = async (sql, ...args) => (await db.execute({ sql, args })).rows[0] || null;
+const all = async (sql, ...args) => (await db.execute({ sql, args })).rows;
+const run = (sql, ...args) => db.execute({ sql, args });
+
+const ready = db.batch([
+  `CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE COLLATE NOCASE,
     pass_hash TEXT NOT NULL,
     salt TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-  CREATE TABLE IF NOT EXISTS sessions (
+  )`,
+  `CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     expires_at INTEGER NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS results (
+  )`,
+  `CREATE TABLE IF NOT EXISTS results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     category TEXT NOT NULL,
     answers TEXT NOT NULL,
     summary TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-`);
+  )`,
+  'CREATE INDEX IF NOT EXISTS results_user ON results(user_id)',
+], 'write');
 
-const hashPassword = (password, salt) =>
-  crypto.scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 }).toString('hex');
+const hashPassword = (password, salt) => new Promise((resolve, reject) =>
+  crypto.scrypt(password, salt, 64, { N: 16384, r: 8, p: 1 }, (e, key) => e ? reject(e) : resolve(key.toString('hex'))));
 
-// --- простая защита от перебора паролей: 10 попыток за 15 минут с одного IP
-const attempts = new Map();
-function rateLimited(ip) {
+// --- откуда пришёл запрос
+const safeEqual = (a, b) => {
+  const x = Buffer.from(String(a)), y = Buffer.from(String(b));
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+};
+const viaCloudflare = req => !!PROXY_KEY && safeEqual(req.headers['x-noventis-proxy-key'] || '', PROXY_KEY);
+
+// Реальный IP посетителя. Прокси на Cloudflare кладёт в x-noventis-client-ip значение CF-Connecting-IP.
+// Доверяем ему, только если запрос подписан секретом PROXY_KEY, иначе любой мог бы подставить чужой IP.
+function clientIp(req) {
+  if (viaCloudflare(req)) {
+    const ip = String(req.headers['x-noventis-client-ip'] || '').trim();
+    if (net.isIP(ip)) return ip;
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
+
+// --- лимиты запросов: окно 15 минут
+const WINDOW = 15 * 60 * 1000;
+const authHits = new Map();  // вход/регистрация: 10 попыток
+const apiHits = new Map();   // все запросы к API: 300
+function overLimit(map, ip, max) {
   const now = Date.now();
-  const rec = attempts.get(ip) || { n: 0, t: now };
-  if (now - rec.t > 15 * 60 * 1000) { rec.n = 0; rec.t = now; }
-  rec.n++;
-  attempts.set(ip, rec);
-  return rec.n > 10;
+  const rec = map.get(ip);
+  if (!rec || now - rec.t > WINDOW) { map.set(ip, { n: 1, t: now }); return false; }
+  return ++rec.n > max;
 }
 
 function parseCookies(req) {
@@ -59,112 +96,132 @@ function parseCookies(req) {
   return out;
 }
 
-function currentUser(req) {
+async function currentUser(req) {
   const token = parseCookies(req).kj_session;
-  if (!token) return null;
-  const row = db.prepare(`
+  if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
+  return one(`
     SELECT u.id, u.name, u.email, u.created_at FROM sessions s
     JOIN users u ON u.id = s.user_id
-    WHERE s.token = ? AND s.expires_at > ?`).get(token, Date.now());
-  return row || null;
+    WHERE s.token = ? AND s.expires_at > ?`, token, Date.now());
 }
 
-function createSession(res, userId) {
+const cookie = (value, maxAge) =>
+  `kj_session=${value}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${PROD ? '; Secure' : ''}`;
+
+async function createSession(res, userId) {
   const token = crypto.randomBytes(32).toString('hex');
-  const expires = Date.now() + SESSION_DAYS * 864e5;
-  db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expires);
-  res.setHeader('Set-Cookie',
-    `kj_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_DAYS * 86400}`);
+  await run('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)',
+    token, userId, Date.now() + SESSION_DAYS * 864e5);
+  res.setHeader('Set-Cookie', cookie(token, SESSION_DAYS * 86400));
 }
 
 function json(res, status, data) {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(data));
 }
+
+class HttpError extends Error { constructor(status, code) { super(code); this.status = status; } }
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let size = 0; const chunks = [];
     req.on('data', c => {
       size += c.length;
-      if (size > 200_000) { reject(new Error('too_large')); req.destroy(); return; }
+      if (size > 200_000) { reject(new HttpError(413, 'too_large')); req.destroy(); return; }
       chunks.push(c);
     });
     req.on('end', () => {
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString() || '{}')); }
-      catch { reject(new Error('bad_json')); }
+      try {
+        const body = JSON.parse(Buffer.concat(chunks).toString() || '{}');
+        if (!body || typeof body !== 'object' || Array.isArray(body)) throw 0;
+        resolve(body);
+      } catch { reject(new HttpError(400, 'bad_json')); }
     });
   });
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const str = v => (typeof v === 'string' ? v : '');
+const isPlainObject = v => !!v && typeof v === 'object' && !Array.isArray(v);
 
 async function api(req, res, url) {
+  // Если сервер стоит за Cloudflare, напрямую на Render к API не пускаем.
+  if (PROXY_KEY && !viaCloudflare(req)) return json(res, 403, { error: 'forbidden' });
+
   const route = `${req.method} ${url.pathname}`;
-  const ip = req.socket.remoteAddress;
+  const ip = clientIp(req);
+  if (overLimit(apiHits, ip, 300)) return json(res, 429, { error: 'too_many' });
+
+  if (route === 'GET /api/health') return json(res, 200, { ok: true });
 
   if (route === 'POST /api/register') {
-    const { name = '', email = '', password = '' } = await readBody(req);
-    if (rateLimited(ip)) return json(res, 429, { error: 'too_many' });
-    if (name.trim().length < 2) return json(res, 400, { error: 'name_short' });
-    if (!EMAIL_RE.test(email)) return json(res, 400, { error: 'email_invalid' });
+    const body = await readBody(req);
+    if (overLimit(authHits, ip, 10)) return json(res, 429, { error: 'too_many' });
+    const name = str(body.name).trim(), email = str(body.email).trim().toLowerCase(), password = str(body.password);
+    if (name.length < 2) return json(res, 400, { error: 'name_short' });
+    if (email.length > 254 || !EMAIL_RE.test(email)) return json(res, 400, { error: 'email_invalid' });
     if (password.length < 8) return json(res, 400, { error: 'password_short' });
-    if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email.trim()))
-      return json(res, 409, { error: 'email_taken' });
+    if (password.length > 200) return json(res, 400, { error: 'bad_json' });
+    if (await one('SELECT 1 FROM users WHERE email = ?', email)) return json(res, 409, { error: 'email_taken' });
     const salt = crypto.randomBytes(16).toString('hex');
-    const r = db.prepare('INSERT INTO users (name, email, pass_hash, salt) VALUES (?, ?, ?, ?)')
-      .run(name.trim().slice(0, 60), email.trim().toLowerCase(), hashPassword(password, salt), salt);
-    createSession(res, Number(r.lastInsertRowid));
+    const r = await run('INSERT INTO users (name, email, pass_hash, salt) VALUES (?, ?, ?, ?)',
+      name.slice(0, 60), email, await hashPassword(password, salt), salt);
+    await createSession(res, Number(r.lastInsertRowid));
     return json(res, 201, { ok: true });
   }
 
   if (route === 'POST /api/login') {
-    const { email = '', password = '' } = await readBody(req);
-    if (rateLimited(ip)) return json(res, 429, { error: 'too_many' });
-    const u = db.prepare('SELECT id, pass_hash, salt FROM users WHERE email = ?').get(email.trim());
-    const ok = u && crypto.timingSafeEqual(
-      Buffer.from(hashPassword(password, u.salt), 'hex'), Buffer.from(u.pass_hash, 'hex'));
+    const body = await readBody(req);
+    if (overLimit(authHits, ip, 10)) return json(res, 429, { error: 'too_many' });
+    const email = str(body.email).trim(), password = str(body.password);
+    if (!email || !password || password.length > 200) return json(res, 401, { error: 'bad_credentials' });
+    const u = await one('SELECT id, pass_hash, salt FROM users WHERE email = ?', email);
+    const ok = u && safeEqual(await hashPassword(password, u.salt), u.pass_hash);
     if (!ok) return json(res, 401, { error: 'bad_credentials' });
-    attempts.delete(ip);
-    createSession(res, u.id);
+    authHits.delete(ip);
+    await createSession(res, Number(u.id));
     return json(res, 200, { ok: true });
   }
 
   if (route === 'POST /api/logout') {
     const token = parseCookies(req).kj_session;
-    if (token) db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
-    res.setHeader('Set-Cookie', 'kj_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
+    if (token) await run('DELETE FROM sessions WHERE token = ?', token);
+    res.setHeader('Set-Cookie', cookie('', 0));
     return json(res, 200, { ok: true });
   }
 
-  const user = currentUser(req);
+  const user = await currentUser(req);
 
   if (route === 'GET /api/me') return json(res, 200, { user });
 
   if (!user) return json(res, 401, { error: 'unauthorized' });
 
+  // Все запросы ниже ищут только по user_id вошедшего — чужие результаты не видны и не удаляются.
   if (route === 'GET /api/results') {
-    const rows = db.prepare(
-      'SELECT id, category, summary, created_at FROM results WHERE user_id = ? ORDER BY id DESC').all(user.id);
+    const rows = await all(
+      'SELECT id, category, summary, created_at FROM results WHERE user_id = ? ORDER BY id DESC', user.id);
     return json(res, 200, { results: rows.map(r => ({ ...r, summary: JSON.parse(r.summary) })) });
   }
 
   if (route === 'POST /api/results') {
-    const { category, answers, summary } = await readBody(req);
+    const { category, answers = {}, summary = {} } = await readBody(req);
     if (!['university', 'work', 'prep'].includes(category)) return json(res, 400, { error: 'bad_category' });
-    const r = db.prepare('INSERT INTO results (user_id, category, answers, summary) VALUES (?, ?, ?, ?)')
-      .run(user.id, category, JSON.stringify(answers || {}), JSON.stringify(summary || {}));
+    if (!isPlainObject(answers) || !isPlainObject(summary)) return json(res, 400, { error: 'bad_json' });
+    const n = await one('SELECT COUNT(*) AS c FROM results WHERE user_id = ?', user.id);
+    if (Number(n.c) >= 200) return json(res, 400, { error: 'too_many' });
+    const r = await run('INSERT INTO results (user_id, category, answers, summary) VALUES (?, ?, ?, ?)',
+      user.id, category, JSON.stringify(answers), JSON.stringify(summary));
     return json(res, 201, { id: Number(r.lastInsertRowid) });
   }
 
-  const m = url.pathname.match(/^\/api\/results\/(\d+)$/);
+  const m = url.pathname.match(/^\/api\/results\/(\d{1,12})$/);
   if (m && req.method === 'GET') {
-    const r = db.prepare('SELECT * FROM results WHERE id = ? AND user_id = ?').get(Number(m[1]), user.id);
+    const r = await one('SELECT * FROM results WHERE id = ? AND user_id = ?', Number(m[1]), user.id);
     if (!r) return json(res, 404, { error: 'not_found' });
     return json(res, 200, { ...r, answers: JSON.parse(r.answers), summary: JSON.parse(r.summary) });
   }
   if (m && req.method === 'DELETE') {
-    db.prepare('DELETE FROM results WHERE id = ? AND user_id = ?').run(Number(m[1]), user.id);
+    await run('DELETE FROM results WHERE id = ? AND user_id = ?', Number(m[1]), user.id);
     return json(res, 200, { ok: true });
   }
 
@@ -178,6 +235,7 @@ const MIME = {
   '.webp': 'image/webp', '.woff2': 'font/woff2',
 };
 
+// Страницы отдаёт Cloudflare Pages; здесь — для запуска на своём компьютере.
 function serveStatic(req, res, url) {
   let p = decodeURIComponent(url.pathname);
   if (p === '/') p = '/index.html';
@@ -192,22 +250,29 @@ function serveStatic(req, res, url) {
     const ext = path.extname(file);
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
-      'Cache-Control': ext === '.jpg' ? 'public, max-age=604800' : 'no-cache',
+      'Cache-Control': ext === '.jpg' || ext === '.webp' ? 'public, max-age=604800' : 'no-cache',
     });
     fs.createReadStream(file).pipe(res);
   });
 }
 
-http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  try {
-    if (url.pathname.startsWith('/api/')) return await api(req, res, url);
-    serveStatic(req, res, url);
-  } catch (e) {
-    console.error(e);
-    json(res, 500, { error: 'server_error' });
-  }
-}).listen(PORT, () => console.log(`\n  Noventis запущен →  http://localhost:${PORT}\n`));
+ready.then(() => {
+  http.createServer(async (req, res) => {
+    const url = new URL(req.url, 'http://localhost');
+    try {
+      if (url.pathname.startsWith('/api/')) return await api(req, res, url);
+      serveStatic(req, res, url);
+    } catch (e) {
+      if (e instanceof HttpError) return json(res, e.status, { error: e.message });
+      console.error(e);
+      json(res, 500, { error: 'server_error' });
+    }
+  }).listen(PORT, () => console.log(`\n  Noventis запущен →  http://localhost:${PORT}\n`));
+}).catch(e => { console.error('Не удалось подключиться к базе:', e.message); process.exit(1); });
 
-// чистка просроченных сессий раз в час
-setInterval(() => db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now()), 36e5).unref();
+// раз в час: чистим просроченные сессии и старые записи лимитов
+setInterval(() => {
+  run('DELETE FROM sessions WHERE expires_at < ?', Date.now()).catch(e => console.error(e));
+  const now = Date.now();
+  for (const map of [authHits, apiHits]) for (const [ip, rec] of map) if (now - rec.t > WINDOW) map.delete(ip);
+}, 36e5).unref();
