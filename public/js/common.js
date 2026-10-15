@@ -49,6 +49,7 @@ const UI = {
   err_bad_credentials: L('Неверный email или пароль', 'Wrong email or password'),
   err_too_many: L('Слишком много попыток. Подожди 15 минут.', 'Too many attempts. Wait 15 minutes.'),
   err_server: L('Ошибка сервера. Попробуй ещё раз.', 'Server error. Try again.'),
+  wait_wake: L('Подключаемся, это займёт до минуты…', 'Connecting, this may take up to a minute…'),
 
   // test
   q_of: L('Вопрос', 'Question'), back: L('Назад', 'Back'), next: L('Далее', 'Next'), finish: L('Показать результат', 'Show result'),

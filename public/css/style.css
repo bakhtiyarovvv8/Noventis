@@ -242,6 +242,10 @@ footer .container { display: flex; justify-content: space-between; gap: 20px; fl
 .strength span { min-width: 80px; text-align: right; }
 .form-error { min-height: 22px; color: var(--danger); font-size: 14px; margin: 4px 0 12px; }
 .auth-card .btn-gold { width: 100%; height: 58px; }
+.form-wait { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 14px 0 0; font-size: 13px; color: var(--gold); letter-spacing: .02em; animation: waitIn .6s var(--ease) both; }
+.form-wait[hidden] { display: none; }
+.form-wait::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 12px var(--gold); animation: blink 1.2s ease-in-out infinite; }
+@keyframes waitIn { from { opacity: 0; transform: translateY(6px); } }
 .auth-card form > [data-only] { transition: opacity .3s; }
 .hidden { display: none !important; }
 .spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(0,0,0,.2); border-top-color: var(--gold-ink); animation: spin .8s linear infinite; }
