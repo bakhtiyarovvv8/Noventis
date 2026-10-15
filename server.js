@@ -78,7 +78,10 @@ function clientIp(req) {
 
 // --- лимиты запросов: окно 15 минут
 const WINDOW = 15 * 60 * 1000;
-const authHits = new Map();  // вход/регистрация: 10 попыток
+// вход/регистрация: 10 попыток на связку IP + email. За одним IP в Узбекистане часто сидят
+// сотни людей (мобильные операторы, школы), поэтому один IP целиком не блокируем.
+const authHits = new Map();
+const authKey = (ip, email) => ip + '|' + str(email).trim().toLowerCase();
 const apiHits = new Map();   // все запросы к API: 300
 function overLimit(map, ip, max) {
   const now = Date.now();
@@ -156,7 +159,7 @@ async function api(req, res, url) {
 
   if (route === 'POST /api/register') {
     const body = await readBody(req);
-    if (overLimit(authHits, ip, 10)) return json(res, 429, { error: 'too_many' });
+    if (overLimit(authHits, authKey(ip, body.email), 10)) return json(res, 429, { error: 'too_many' });
     const name = str(body.name).trim(), email = str(body.email).trim().toLowerCase(), password = str(body.password);
     if (name.length < 2) return json(res, 400, { error: 'name_short' });
     if (email.length > 254 || !EMAIL_RE.test(email)) return json(res, 400, { error: 'email_invalid' });
@@ -172,13 +175,13 @@ async function api(req, res, url) {
 
   if (route === 'POST /api/login') {
     const body = await readBody(req);
-    if (overLimit(authHits, ip, 10)) return json(res, 429, { error: 'too_many' });
+    if (overLimit(authHits, authKey(ip, body.email), 10)) return json(res, 429, { error: 'too_many' });
     const email = str(body.email).trim(), password = str(body.password);
     if (!email || !password || password.length > 200) return json(res, 401, { error: 'bad_credentials' });
     const u = await one('SELECT id, pass_hash, salt FROM users WHERE email = ?', email);
     const ok = u && safeEqual(await hashPassword(password, u.salt), u.pass_hash);
     if (!ok) return json(res, 401, { error: 'bad_credentials' });
-    authHits.delete(ip);
+    authHits.delete(authKey(ip, email));
     await createSession(res, Number(u.id));
     return json(res, 200, { ok: true });
   }
@@ -274,5 +277,5 @@ ready.then(() => {
 setInterval(() => {
   run('DELETE FROM sessions WHERE expires_at < ?', Date.now()).catch(e => console.error(e));
   const now = Date.now();
-  for (const map of [authHits, apiHits]) for (const [ip, rec] of map) if (now - rec.t > WINDOW) map.delete(ip);
+  for (const map of [authHits, apiHits]) for (const [key, rec] of map) if (now - rec.t > WINDOW) map.delete(key);
 }, 36e5).unref();

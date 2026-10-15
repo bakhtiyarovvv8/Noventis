@@ -4,7 +4,8 @@
   "description": "Noventis — профориентация: тест способностей, вузы мира, профессии, план подготовки",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/api.test.js"
   },
   "engines": {
     "node": ">=22.13"
