@@ -102,6 +102,22 @@ test('дедлайны и план: только свои данные, пров
   assert.equal((await call(LOCAL, P, { method: 'PUT', cookie: a.cookie, body: { checks: ['<script>'] } })).status, 400);
 });
 
+test('сохранённые расчёты: только свои, проверка типа', async () => {
+  const a = await call(LOCAL, '/api/register', { method: 'POST', body: { name: 'Тест А', email: uniq('ca'), password: '12345678' } });
+  const b = await call(LOCAL, '/api/register', { method: 'POST', body: { name: 'Тест Б', email: uniq('cb'), password: '12345678' } });
+  assert.equal((await call(LOCAL, '/api/calcs')).status, 401);
+  const s = await call(LOCAL, '/api/calcs', { method: 'POST', cookie: a.cookie, body: { kind: 'cost', data: { cc: 'KR', total: 40000 } } });
+  assert.equal(s.status, 201);
+  assert.equal((await call(LOCAL, '/api/calcs', { method: 'POST', cookie: a.cookie, body: { kind: 'hack', data: {} } })).status, 400);
+  assert.equal((await call(LOCAL, '/api/calcs', { method: 'POST', cookie: a.cookie, body: { kind: 'cost', data: [1] } })).status, 400);
+  assert.equal((await call(LOCAL, '/api/calcs', { cookie: a.cookie })).data.calcs[0].data.cc, 'KR');
+  assert.equal((await call(LOCAL, '/api/calcs', { cookie: b.cookie })).data.calcs.length, 0);
+  await call(LOCAL, `/api/calcs/${s.data.id}`, { method: 'DELETE', cookie: b.cookie });
+  assert.equal((await call(LOCAL, '/api/calcs', { cookie: a.cookie })).data.calcs.length, 1, 'Б не удаляет расчёт А');
+  await call(LOCAL, `/api/calcs/${s.data.id}`, { method: 'DELETE', cookie: a.cookie });
+  assert.equal((await call(LOCAL, '/api/calcs', { cookie: a.cookie })).data.calcs.length, 0);
+});
+
 test('проверка входящих данных: 400 вместо падения', async () => {
   assert.equal((await call(LOCAL, '/api/login', { method: 'POST', body: '{oops' })).status, 400);
   assert.equal((await call(LOCAL, '/api/register', { method: 'POST', body: { name: { a: 1 }, email: 5, password: [1] } })).status, 400);

@@ -77,6 +77,15 @@ const ready = db.batch([
     checks TEXT NOT NULL DEFAULT '[]',
     PRIMARY KEY (user_id, result_id)
   )`,
+  // сохранённые расчёты калькуляторов: kind — chances | cost, data — JSON с вводом и итогом
+  `CREATE TABLE IF NOT EXISTS calcs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    data TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  'CREATE INDEX IF NOT EXISTS calcs_user ON calcs(user_id)',
 ], 'write');
 
 const hashPassword = (password, salt) => new Promise((resolve, reject) =>
@@ -279,6 +288,28 @@ async function api(req, res, url) {
     if (Number(n.c) >= 300) return json(res, 400, { error: 'fav_limit' });
     await run('INSERT OR IGNORE INTO favorites (user_id, name, place, web) VALUES (?, ?, ?, ?)', user.id, name, place, web);
     return json(res, 201, { ok: true });
+  }
+
+  if (route === 'GET /api/calcs') {
+    const rows = await all('SELECT id, kind, data, created_at FROM calcs WHERE user_id = ? ORDER BY id DESC', user.id);
+    return json(res, 200, { calcs: rows.map(r => ({ ...r, data: JSON.parse(r.data) })) });
+  }
+
+  if (route === 'POST /api/calcs') {
+    const { kind, data } = await readBody(req);
+    if (!['chances', 'cost'].includes(kind) || !isPlainObject(data)) return json(res, 400, { error: 'bad_json' });
+    const text = JSON.stringify(data);
+    if (text.length > 20_000) return json(res, 413, { error: 'too_large' });
+    const n = await one('SELECT COUNT(*) AS c FROM calcs WHERE user_id = ?', user.id);
+    if (Number(n.c) >= 100) return json(res, 400, { error: 'too_many' });
+    const r = await run('INSERT INTO calcs (user_id, kind, data) VALUES (?, ?, ?)', user.id, kind, text);
+    return json(res, 201, { id: Number(r.lastInsertRowid) });
+  }
+
+  const cc = url.pathname.match(/^\/api\/calcs\/(\d{1,12})$/);
+  if (cc && req.method === 'DELETE') {
+    await run('DELETE FROM calcs WHERE id = ? AND user_id = ?', Number(cc[1]), user.id);
+    return json(res, 200, { ok: true });
   }
 
   if (route === 'GET /api/deadlines') {
