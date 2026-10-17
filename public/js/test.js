@@ -306,6 +306,9 @@ const SUBJECTS = {
   arch: [L('Рисунок', 'Drawing'), L('Математика', 'Math')], psy: [L('Биология', 'Biology'), L('Обществознание', 'Social studies')],
   media: [L('Литература', 'Literature'), L('Портфолио', 'Portfolio')],
 };
+// у новых направлений предметы и портфолио записаны в FIELDS
+const subjectsOf = id => SUBJECTS[id] || FIELDS[id].subj;
+const needsPortfolio = id => ['design', 'arch', 'media'].includes(id) || !!FIELDS[id].portfolio;
 
 function renderPrep(s) {
   const F = FIELDS[s.field];
@@ -321,13 +324,13 @@ function renderPrep(s) {
   const exams = (s.targets.length ? s.targets : ['uz']).map(k => `<li><div><b>${tx(REGIONS[k] || { ru: 'Узбекистан (междунар. вузы)', en: 'Uzbekistan (international unis)' })}:</b>&nbsp;${tx(EXAMS[k].n)}<br><span style="color:var(--ink-3);font-size:13px">${tx(EXAMS[k].d)}</span></div></li>`);
 
   // дорожная карта: этапы распределяются по доступным месяцам
-  const subj = SUBJECTS[s.field].map(tx).join(', ');
+  const subj = subjectsOf(s.field).map(tx).join(', ');
   const ru = LANG === 'ru';
   const stages = [
     { p: .06, h: ru ? 'Диагностика' : 'Diagnosis', d: ru ? `Пробный тест${foreign ? ' IELTS' : ''}${s.targets.includes('us') ? ' и SAT' : ''}${s.targets.includes('uz') ? ' и пробник uzbmb' : ''}. Определи разрыв до нужного балла.` : `Mock test${foreign ? ' IELTS' : ''}${s.targets.includes('us') ? ' and SAT' : ''}${s.targets.includes('uz') ? ' and uzbmb mock' : ''}. Find the gap to your target score.` },
     { p: .45, h: ru ? 'База' : 'Foundation', d: ru ? `Профильные предметы: ${subj}.${needEng ? ' Английский каждый день — цель IELTS 6.5.' : ''}` : `Core subjects: ${subj}.${needEng ? ' English daily — target IELTS 6.5.' : ''}` },
     { p: .7, h: ru ? 'Экзамены' : 'Exams', d: ru ? `Сдача: ${(s.targets.length ? s.targets : ['uz']).map(k => tx(EXAMS[k].n)).join('; ')}. Оставь время на пересдачу.` : `Take: ${(s.targets.length ? s.targets : ['uz']).map(k => tx(EXAMS[k].n)).join('; ')}. Leave time for a retake.` },
-    { p: .85, h: ru ? 'Документы' : 'Documents', d: ru ? `${foreign ? 'Мотивационное письмо, 2 рекомендации, перевод и апостиль аттестата' : 'Аттестат, паспорт, фото, регистрация на my.gov.uz'}${['design', 'arch', 'media'].includes(s.field) ? ', портфолио' : ''}.` : `${foreign ? 'Motivation letter, 2 recommendations, translated & apostilled diploma' : 'Diploma, passport, photos, registration on my.gov.uz'}${['design', 'arch', 'media'].includes(s.field) ? ', portfolio' : ''}.` },
+    { p: .85, h: ru ? 'Документы' : 'Documents', d: ru ? `${foreign ? 'Мотивационное письмо, 2 рекомендации, перевод и апостиль аттестата' : 'Аттестат, паспорт, фото, регистрация на my.gov.uz'}${needsPortfolio(s.field) ? ', портфолио' : ''}.` : `${foreign ? 'Motivation letter, 2 recommendations, translated & apostilled diploma' : 'Diploma, passport, photos, registration on my.gov.uz'}${needsPortfolio(s.field) ? ', portfolio' : ''}.` },
     { p: 1, h: ru ? 'Подача и гранты' : 'Applications & grants', d: ru ? 'Подай в 5–8 вузов: 2 мечты, 3 реальных, 2 запасных. Параллельно — заявки на гранты.' : 'Apply to 5–8 universities: 2 dream, 3 match, 2 safety. Apply for grants in parallel.' },
   ];
   let prev = 0;
@@ -340,7 +343,7 @@ function renderPrep(s) {
 
   // неделя
   const H = s.hours, per = Math.max(1, Math.round(H / 6 * 10) / 10);
-  const [s1, s2] = SUBJECTS[s.field].map(tx);
+  const [s1, s2] = subjectsOf(s.field).map(tx);
   const engL = needEng ? (ru ? 'Английский' : 'English') : (ru ? 'Практика задач' : 'Practice problems');
   const days = ru ? ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'] : ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   const plan = [[s1, engL], [engL, s2], [s1, engL], [s2, engL], [s1, ru ? 'Документы' : 'Documents'], [ru ? 'Пробный тест' : 'Mock test', ru ? 'Разбор ошибок' : 'Review'], [ru ? 'Отдых' : 'Rest']];
