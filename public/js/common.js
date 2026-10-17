@@ -149,6 +149,15 @@ const UI = {
   dl_soon: L('Мои ближайшие дедлайны', 'My upcoming deadlines'), dl_open: L('Все дедлайны →', 'All deadlines →'),
   dl_note: L('Даты — ориентир по прошлым годам и повторяются ежегодно. Точный срок всегда проверяй на официальном сайте по ссылке.', 'Dates are based on previous years and repeat yearly. Always check the exact date on the official website.'),
 
+  // личный план по неделям
+  pl_title: L('Мой план по неделям', 'My weekly plan'),
+  pl_lead: L('План из твоего результата «Подготовка к вузу». Отмечай сделанное — прогресс сохраняется в кабинете.', 'Built from your “University prep” result. Tick off what you’ve done — progress is saved to your dashboard.'),
+  pl_left: L('До подачи осталось', 'Until applications'), pl_weeks: L('нед.', 'wk'),
+  pl_week: L('Неделя', 'Week'), pl_now: L('эта неделя', 'this week'), pl_done: L('выполнено', 'done'),
+  pl_none: L('Сначала пройди тест «Подготовка к вузу» — из него соберём план.', 'Take the “University prep” test first — we’ll build the plan from it.'),
+  pl_show_all: L('Показать все недели', 'Show all weeks'), pl_hide: L('Только ближайшие', 'Upcoming only'),
+  pl_open: L('План по неделям', 'Weekly plan'),
+
   // навигация внутренних страниц и хаб инструментов
   nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'),
   tools_title: L('Инструменты', 'Tools'),

@@ -70,6 +70,13 @@ const ready = db.batch([
     did TEXT NOT NULL,
     PRIMARY KEY (user_id, did)
   )`,
+  // галочки личного плана по неделям: checks — JSON-массив ключей «неделя:задача»
+  `CREATE TABLE IF NOT EXISTS plan_progress (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    result_id INTEGER NOT NULL REFERENCES results(id) ON DELETE CASCADE,
+    checks TEXT NOT NULL DEFAULT '[]',
+    PRIMARY KEY (user_id, result_id)
+  )`,
 ], 'write');
 
 const hashPassword = (password, salt) => new Promise((resolve, reject) =>
@@ -291,6 +298,21 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true });
   }
 
+  const pm = url.pathname.match(/^\/api\/plan\/(\d{1,12})$/);
+  if (pm && (req.method === 'GET' || req.method === 'PUT')) {
+    const rid = Number(pm[1]);
+    if (!await one("SELECT 1 FROM results WHERE id = ? AND user_id = ? AND category = 'prep'", rid, user.id)) return json(res, 404, { error: 'not_found' });
+    if (req.method === 'GET') {
+      const row = await one('SELECT checks FROM plan_progress WHERE user_id = ? AND result_id = ?', user.id, rid);
+      return json(res, 200, { checks: row ? JSON.parse(row.checks) : [] });
+    }
+    const { checks } = await readBody(req);
+    if (!Array.isArray(checks) || checks.length > 3000 || !checks.every(k => typeof k === 'string' && /^\d{1,3}:\d{1,2}$/.test(k))) return json(res, 400, { error: 'bad_json' });
+    await run(`INSERT INTO plan_progress (user_id, result_id, checks) VALUES (?, ?, ?)
+      ON CONFLICT (user_id, result_id) DO UPDATE SET checks = excluded.checks`, user.id, rid, JSON.stringify([...new Set(checks)]));
+    return json(res, 200, { ok: true });
+  }
+
   const m = url.pathname.match(/^\/api\/results\/(\d{1,12})$/);
   if (m && req.method === 'GET') {
     const r = await one('SELECT * FROM results WHERE id = ? AND user_id = ?', Number(m[1]), user.id);
@@ -299,6 +321,7 @@ async function api(req, res, url) {
   }
   if (m && req.method === 'DELETE') {
     await run('DELETE FROM results WHERE id = ? AND user_id = ?', Number(m[1]), user.id);
+    await run('DELETE FROM plan_progress WHERE result_id = ? AND user_id = ?', Number(m[1]), user.id);
     return json(res, 200, { ok: true });
   }
 

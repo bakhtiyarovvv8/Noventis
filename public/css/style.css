@@ -367,6 +367,18 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
 .cost-cell span { font-size: 13px; color: var(--ink-3); }
 .cost-cell.big { border-color: rgba(226,189,127,.5); background: rgba(226,189,127,.08); }
 .cost-cell.big b { color: var(--gold-2); font-size: 28px; }
+/* план по неделям */
+.plan-week { padding: 22px 26px; }
+.plan-week.now { border-color: rgba(226,189,127,.55); box-shadow: 0 0 0 1px rgba(226,189,127,.2); }
+.plan-week.done { opacity: .6; }
+.plan-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 12px; }
+.plan-head b { font-family: var(--display); font-weight: 500; font-size: 18px; }
+.plan-head span { color: var(--ink-3); font-size: 13px; }
+.plan-head em { font-style: normal; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold-ink); background: var(--gold); padding: 3px 10px; border-radius: 999px; }
+.plan-task { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; cursor: pointer; font-size: 15px; }
+.plan-task input { accent-color: var(--gold); width: 19px; height: 19px; margin-top: 3px; flex: 0 0 auto; }
+.plan-task input:checked + span { color: var(--ink-3); text-decoration: line-through; }
+
 /* дедлайны */
 .dl-month { margin: 26px 0 12px; }
 .dl-month:first-child { margin-top: 0; }

@@ -1356,6 +1356,19 @@ const Q = {
 
 const PROFILE = ['p_age', 'p_status', 'p_langs', 'p_eng', 'p_subjects'];
 
+// Профильные предметы первых 13 направлений; у остальных они в FIELDS[id].subj
+const SUBJECTS = {
+  it: [L('Математика', 'Math'), L('Информатика', 'Computer science')], data: [L('Математика', 'Math'), L('Статистика', 'Statistics')],
+  eng: [L('Математика', 'Math'), L('Физика', 'Physics')], med: [L('Биология', 'Biology'), L('Химия', 'Chemistry')],
+  bio: [L('Химия', 'Chemistry'), L('Биология', 'Biology')], biz: [L('Математика', 'Math'), L('Экономика', 'Economics')],
+  fin: [L('Математика', 'Math'), L('Экономика', 'Economics')], law: [L('История', 'History'), L('Право / общество', 'Law / society')],
+  ir: [L('История', 'History'), L('Второй язык', 'Second language')], design: [L('Портфолио', 'Portfolio'), L('Рисунок', 'Drawing')],
+  arch: [L('Рисунок', 'Drawing'), L('Математика', 'Math')], psy: [L('Биология', 'Biology'), L('Обществознание', 'Social studies')],
+  media: [L('Литература', 'Literature'), L('Портфолио', 'Portfolio')],
+};
+const subjectsOf = id => SUBJECTS[id] || FIELDS[id].subj;
+const needsPortfolio = id => ['design', 'arch', 'media'].includes(id) || !!FIELDS[id].portfolio;
+
 const CATEGORIES = {
   university: {
     title: L('Университет', 'University'), img: '/img/campus.jpg',

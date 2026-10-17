@@ -170,6 +170,7 @@ async function finish() {
   const summary = buildSummary();
   current = { category: CAT, answers, summary };
   const [r] = await Promise.all([api('/api/results', { method: 'POST', body: current }), new Promise(r => setTimeout(r, 1600))]);
+  if (r.ok) current.id = r.data.id;
   renderResult();
   if (r.ok) toast(t('saved'));
 }
@@ -315,19 +316,6 @@ function renderWork(s) {
     + otherFields(s.fields.slice(3, 9));
 }
 
-const SUBJECTS = {
-  it: [L('Математика', 'Math'), L('Информатика', 'Computer science')], data: [L('Математика', 'Math'), L('Статистика', 'Statistics')],
-  eng: [L('Математика', 'Math'), L('Физика', 'Physics')], med: [L('Биология', 'Biology'), L('Химия', 'Chemistry')],
-  bio: [L('Химия', 'Chemistry'), L('Биология', 'Biology')], biz: [L('Математика', 'Math'), L('Экономика', 'Economics')],
-  fin: [L('Математика', 'Math'), L('Экономика', 'Economics')], law: [L('История', 'History'), L('Право / общество', 'Law / society')],
-  ir: [L('История', 'History'), L('Второй язык', 'Second language')], design: [L('Портфолио', 'Portfolio'), L('Рисунок', 'Drawing')],
-  arch: [L('Рисунок', 'Drawing'), L('Математика', 'Math')], psy: [L('Биология', 'Biology'), L('Обществознание', 'Social studies')],
-  media: [L('Литература', 'Literature'), L('Портфолио', 'Portfolio')],
-};
-// у новых направлений предметы и портфолио записаны в FIELDS
-const subjectsOf = id => SUBJECTS[id] || FIELDS[id].subj;
-const needsPortfolio = id => ['design', 'arch', 'media'].includes(id) || !!FIELDS[id].portfolio;
-
 function renderPrep(s) {
   const F = FIELDS[s.field];
   const foreign = s.targets.some(x => x !== 'uz');
@@ -405,6 +393,7 @@ function renderResult() {
     + html + `<div class="result-actions">
       <button class="btn btn-gold" id="pdf">${t('pdf_btn')}</button>
       <button class="btn btn-ghost" id="share">${t('share_btn')} ↗</button>
+      ${current.category === 'prep' && current.id ? `<a class="btn btn-ghost" href="/plan?result=${current.id}">${t('pl_open')} →</a>` : ''}
       <a class="btn btn-ghost" href="/test?cat=${current.category}">${t('retake')}</a>
       <a class="btn btn-ghost" href="/profile">${t('to_profile')}</a>${others}</div>`;
   document.getElementById('pdf').onclick = () => { toast(t('pdf_hint')); setTimeout(() => print(), 600); };
