@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Noventis — сравнение результатов</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="test-page">
+  <div class="test-bg"><img src="/img/clouds.jpg" alt=""></div>
+  <header class="nav scrolled">
+    <div class="container">
+      <a href="/" class="wordmark">Noventis<span>.</span></a>
+      <nav class="nav-links">
+        <a href="/tools" data-i18n="nav_tools"></a>
+        <a href="/catalog" data-i18n="nav_unis"></a>
+      </nav>
+      <div class="nav-right">
+        <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+        <div class="nav-auth"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-wrap" id="app"></main>
+
+  <script src="/vendor/gsap.min.js"></script>
+  <script src="/js/data.js"></script>
+  <script src="/js/common.js"></script>
+  <script>
+    const app = document.getElementById('app');
+    const params = new URLSearchParams(location.search);
+    let A, B;
+
+    // если оба результата из одного дня — добавляем время, иначе колонки не различить
+    const when = r => {
+      const d = x => new Date(x.created_at.replace(' ', 'T') + 'Z');
+      const sameDay = A && B && d(A).toDateString() === d(B).toDateString();
+      return d(r).toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-GB', sameDay ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+    const pctMap = r => Object.fromEntries((r.summary.fields || []).map(f => [f.id, f.pct]));
+
+    function render() {
+      if (!A || !B) { app.innerHTML = `<div class="empty">${t('cmp_none')}</div>`; return; }
+      if (A.category !== B.category || A.category === 'prep') { app.innerHTML = `<div class="empty">${t('cmp_same')}</div>`; return; }
+      const a = pctMap(A), b = pctMap(B);
+      // все направления, которые есть хотя бы в одном результате; у старых результатов новых направлений нет
+      const rows = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(id => FIELDS[id])
+        .map(id => ({ id, a: a[id] ?? null, b: b[id] ?? null, d: (b[id] ?? 0) - (a[id] ?? 0) }))
+        .sort((x, y) => (y.b ?? 0) - (x.b ?? 0));
+      const both = rows.filter(r => r.a != null && r.b != null);
+      const rose = [...both].sort((x, y) => y.d - x.d).filter(r => r.d > 0).slice(0, 3);
+      const fell = [...both].sort((x, y) => x.d - y.d).filter(r => r.d < 0).slice(0, 3);
+      const delta = d => d == null ? '' : `<b class="${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '▲ +' : d < 0 ? '▼ ' : ''}${d}</b>`;
+      const cell = v => v == null ? '<span class="na">—</span>' : `<i><span style="width:${v}%"></span></i><em>${v}%</em>`;
+      app.innerHTML = `
+        <div class="page-head">
+          <span class="kicker">${tx(CATEGORIES[A.category].title)}</span>
+          <h1>${t('cmp_title')}</h1>
+          <p>${t('cmp_lead')}</p>
+        </div>
+        <div class="cols" style="margin-bottom:18px">
+          <article class="card" style="margin:0"><h4 class="rank" style="margin:0 0 14px">${t('cmp_rose')}</h4>
+            ${rose.length ? `<ul class="list">${rose.map(r => `<li>${tx(FIELDS[r.id].name)}<span class="tag">${delta(r.d)}</span></li>`).join('')}</ul>` : '<p class="note">—</p>'}</article>
+          <article class="card" style="margin:0"><h4 class="rank" style="margin:0 0 14px">${t('cmp_fell')}</h4>
+            ${fell.length ? `<ul class="list">${fell.map(r => `<li>${tx(FIELDS[r.id].name)}<span class="tag">${delta(r.d)}</span></li>`).join('')}</ul>` : '<p class="note">—</p>'}</article>
+        </div>
+        <article class="card">
+          <div class="cmp-row cmp-headrow"><span>${t('cmp_field')}</span><span>${when(A)}</span><span>${when(B)}</span><span>${t('cmp_change')}</span></div>
+          ${rows.map(r => `<div class="cmp-row"><span>${tx(FIELDS[r.id].name)}</span><span class="cmp-bar">${cell(r.a)}</span><span class="cmp-bar now">${cell(r.b)}</span><span>${r.a != null && r.b != null ? delta(r.d) : ''}</span></div>`).join('')}
+        </article>
+        <div class="result-actions"><a class="btn btn-ghost" href="/profile">${t('to_profile')}</a></div>`;
+      gsap.from('.page-head > *, .card', { y: 30, opacity: 0, stagger: .06, duration: 1, ease: 'expo.out' });
+    }
+
+    document.addEventListener('langchange', render);
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!await loadMe()) { location.href = '/auth?next=' + encodeURIComponent(location.pathname + location.search); return; }
+      const ids = [params.get('a'), params.get('b')].filter(x => /^\d{1,12}$/.test(x || ''));
+      const got = await Promise.all(ids.map(id => api('/api/results/' + id)));
+      // раньше созданный — слева
+      const list = got.filter(r => r.ok).map(r => r.data).sort((x, y) => x.id - y.id);
+      [A, B] = list.length === 2 ? list : [null, null];
+      render();
+    });
+  </script>
+</body>
+</html>

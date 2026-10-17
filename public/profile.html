@@ -55,11 +55,14 @@
               <div class="meta"><b>${tx(CATEGORIES[r.category].title)}</b>
                 <span>${new Date(r.created_at.replace(' ', 'T') + 'Z').toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })} · ${resultTitle(r)}</span></div>
               <div class="actions">
+                ${r.category !== 'prep' ? `<label class="pick"><input type="checkbox" class="cmp" value="${r.id}" data-cat="${r.category}">${t('cmp_mark')}</label>` : ''}
                 <a class="btn btn-gold" href="/test?result=${r.id}">${t('open')}</a>
                 <button class="btn btn-ghost del">${t('delete')}</button>
               </div>
             </div>`).join('') : `<div class="empty">${t('no_results')}</div>`}
         </div>
+        ${results.filter(r => r.category !== 'prep').length > 1 ? `<div class="more-row" style="justify-content:flex-start;align-items:center;gap:14px">
+          <button class="btn btn-ghost" id="cmpGo" disabled>${t('cmp_btn')}</button><span class="note" style="margin:0">${t('cmp_pick')}</span></div>` : ''}
         <span class="kicker" id="favorites" style="margin-top:56px">${t('fav_title')}</span>
         <div class="uni-list" style="margin-top:18px">
           ${FAVS.size ? [...FAVS.values()].map(f => `<div class="uni"><div class="meta"><b>${escapeHtml(f.name)}</b><span>${escapeHtml(placeName(f.place))}</span></div>
@@ -75,6 +78,18 @@
           results = results.filter(r => r.id !== +item.dataset.id); render(false);
         }});
       });
+      // сравнение: ровно два результата одного теста
+      const go = document.getElementById('cmpGo');
+      app.querySelectorAll('.cmp').forEach(c => c.onchange = () => {
+        const on = [...app.querySelectorAll('.cmp:checked')];
+        if (on.length > 2) { c.checked = false; return; }
+        if (on.length === 2 && on[0].dataset.cat !== on[1].dataset.cat) { c.checked = false; toast(t('cmp_same')); return; }
+        go.disabled = on.length !== 2;
+      });
+      if (go) go.onclick = () => {
+        const [a, b] = [...app.querySelectorAll('.cmp:checked')].map(c => c.value);
+        location.href = `/compare?a=${a}&b=${b}`;
+      };
       if (animate) gsap.from('.profile-top, .kicker, .quick a, .res-item, .empty', { y: 30, opacity: 0, stagger: .06, duration: 1, ease: 'expo.out' });
     }
 

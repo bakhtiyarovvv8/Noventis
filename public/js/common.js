@@ -81,6 +81,24 @@ const UI = {
   my_results: L('Мои результаты', 'My results'), no_results: L('Пока нет результатов. Пройди первый тест!', 'No results yet. Take your first test!'),
   open: L('Открыть', 'Open'), delete: L('Удалить', 'Delete'), new_test: L('Новый тест', 'New test'),
 
+  // результат: почему подходит, PDF, поделиться
+  why_title: L('Почему тебе подходит — твои ответы', 'Why it fits you — your answers'),
+  pdf_btn: L('Скачать PDF', 'Download PDF'), share_btn: L('Поделиться', 'Share'),
+  pdf_hint: L('В окне печати выбери «Сохранить как PDF»', 'In the print dialog choose “Save as PDF”'),
+  share_title: L('Мне подходит', 'My best fit'), share_cta: L('Пройди тест и узнай свой путь', 'Take the test and find your path'),
+  share_saved: L('Картинка сохранена — отправь её в Telegram или Instagram', 'Image saved — send it to Telegram or Instagram'),
+  report_for: L('Отчёт для', 'Report for'), report_date: L('Дата', 'Date'),
+
+  // сравнение результатов
+  cmp_btn: L('Сравнить выбранные', 'Compare selected'), cmp_mark: L('Сравнить', 'Compare'),
+  cmp_pick: L('Отметь два результата одного теста («Университет» или «Работа»), чтобы сравнить.', 'Tick two results of the same test (“University” or “Career”) to compare.'),
+  cmp_same: L('Сравнивать можно только результаты одного теста', 'You can only compare results of the same test'),
+  cmp_title: L('Как изменились твои склонности', 'How your interests changed'),
+  cmp_lead: L('Слева — более ранний результат, справа — более новый.', 'Left — the earlier result, right — the newer one.'),
+  cmp_rose: L('Выросло сильнее всего', 'Grew the most'), cmp_fell: L('Снизилось', 'Dropped'),
+  cmp_field: L('Направление', 'Field'), cmp_change: L('Изменение', 'Change'),
+  cmp_none: L('Результаты не найдены', 'Results not found'),
+
   // навигация внутренних страниц и хаб инструментов
   nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'),
   tools_title: L('Инструменты', 'Tools'),

@@ -212,8 +212,24 @@ function head(titleKey, s) {
   </div>`;
 }
 
+// Какие ответы сильнее всего подняли направление — для блока «Почему тебе подходит»
+function whyFor(fid, ans) {
+  const items = [];
+  for (const qid of Object.keys(ans || {})) {
+    const q = Q[qid];
+    if (!q || !q.options) continue;
+    for (const v of [].concat(ans[qid])) {
+      const o = q.options.find(o => o.v === v);
+      const w = o && o.w && o.w[fid];
+      if (w > 0) items.push({ t: tx(o.t), w });
+    }
+  }
+  return items.sort((a, b) => b.w - a.w).slice(0, 5);
+}
+
 function fieldCard(f, rank, inner) {
   const F = FIELDS[f.id];
+  const why = whyFor(f.id, current.answers);
   return `<article class="card field-card">
     <div class="top">
       <div class="glyph">${F.glyph}</div>
@@ -221,6 +237,7 @@ function fieldCard(f, rank, inner) {
     </div>
     <div class="meter"><div class="bar"><span data-w="${f.pct}"></span></div><b>${f.pct}%</b></div>
     <p class="desc">${tx(F.desc)}</p>
+    ${why.length ? `<div class="why"><h4>${t('why_title')}</h4><div class="profile-chips">${why.map(x => `<span class="chip gold">${escapeHtml(x.t)} <b>+${x.w}</b></span>`).join('')}</div></div>` : ''}
     ${inner}
   </article>`;
 }
@@ -382,11 +399,96 @@ function renderResult() {
   const html = { university: renderUniversity, work: renderWork, prep: renderPrep }[current.category](s);
   const others = Object.keys(CATEGORIES).filter(k => k !== current.category)
     .map(k => `<a class="btn btn-ghost" href="/test?cat=${k}">${tx(CATEGORIES[k].title)} →</a>`).join('');
-  app.innerHTML = html + `<div class="result-actions">
-      <a class="btn btn-gold" href="/test?cat=${current.category}">${t('retake')}</a>
+  const date = (current.created_at ? new Date(current.created_at.replace(' ', 'T') + 'Z') : new Date())
+    .toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  app.innerHTML = `<div class="print-head"><b>Noventis<span>.</span></b><span>${t('report_for')} ${escapeHtml(ME.name)} · ${t('report_date')}: ${date}</span></div>`
+    + html + `<div class="result-actions">
+      <button class="btn btn-gold" id="pdf">${t('pdf_btn')}</button>
+      <button class="btn btn-ghost" id="share">${t('share_btn')} ↗</button>
+      <a class="btn btn-ghost" href="/test?cat=${current.category}">${t('retake')}</a>
       <a class="btn btn-ghost" href="/profile">${t('to_profile')}</a>${others}</div>`;
+  document.getElementById('pdf').onclick = () => { toast(t('pdf_hint')); setTimeout(() => print(), 600); };
+  document.getElementById('share').onclick = shareCard;
   gsap.from('.result-head > *, .alert, .card', { y: 40, opacity: 0, stagger: .08, duration: 1, ease: 'expo.out' });
   requestAnimationFrame(() => setTimeout(() => app.querySelectorAll('.meter .bar span').forEach(b => b.style.width = b.dataset.w + '%'), 200));
+}
+
+// ---------- карточка «Поделиться» (1080×1350 — формат поста Instagram) ----------
+const loadImg = src => new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src; });
+
+// перенос строки по ширине; возвращает массив строк
+function wrapText(g, text, maxW) {
+  const lines = []; let line = '';
+  for (const word of text.split(' ')) {
+    const test = line ? line + ' ' + word : word;
+    if (g.measureText(test).width > maxW && line) { lines.push(line); line = word; } else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+async function shareCard() {
+  const btn = document.getElementById('share');
+  btn.disabled = true;
+  try {
+    await document.fonts.ready;
+    const W = 1080, H = 1350, P = 90;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    // фон: фото трека, затемнённое
+    const img = await loadImg(CATEGORIES[current.category].img);
+    const k = Math.max(W / img.width, H / img.height);
+    g.drawImage(img, (W - img.width * k) / 2, (H - img.height * k) / 2, img.width * k, img.height * k);
+    const grad = g.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, 'rgba(6,7,11,.55)'); grad.addColorStop(.45, 'rgba(6,7,11,.82)'); grad.addColorStop(1, 'rgba(6,7,11,.97)');
+    g.fillStyle = grad; g.fillRect(0, 0, W, H);
+
+    g.fillStyle = '#f4f1ea'; g.font = '700 46px Unbounded';
+    g.fillText('Noventis', P, P + 40);
+    g.fillStyle = '#e2bd7f'; g.fillText('.', P + g.measureText('Noventis').width, P + 40);
+
+    const s = current.summary;
+    const list = s.fields ? s.fields.slice(0, 3) : [{ id: s.field, pct: null }];
+    let y = 420;
+    g.fillStyle = '#e2bd7f'; g.font = '700 30px Manrope';
+    g.fillText(t('share_title').toUpperCase(), P, y);
+    y += 40;
+    list.forEach((f, i) => {
+      const name = tx(FIELDS[f.id].name);
+      g.font = `${i === 0 ? 600 : 500} ${i === 0 ? 70 : 46}px Unbounded`;
+      g.fillStyle = i === 0 ? '#f4f1ea' : 'rgba(244,241,234,.78)';
+      const lines = wrapText(g, name, W - P * 2 - (f.pct != null ? 150 : 0));
+      lines.forEach(l => { y += i === 0 ? 86 : 60; g.fillText(l, P, y); });
+      if (f.pct != null) {
+        g.font = '600 40px Unbounded'; g.fillStyle = '#e2bd7f';
+        const pct = f.pct + '%';
+        g.fillText(pct, W - P - g.measureText(pct).width, y);
+        // полоска совпадения
+        y += 28;
+        g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(P, y, W - P * 2, 8);
+        g.fillStyle = '#e2bd7f'; g.fillRect(P, y, (W - P * 2) * f.pct / 100, 8);
+      }
+      y += 34;
+    });
+
+    g.font = '500 34px Manrope'; g.fillStyle = 'rgba(244,241,234,.75)';
+    g.fillText(t('share_cta'), P, H - P - 56);
+    g.font = '700 38px Manrope'; g.fillStyle = '#e2bd7f';
+    g.fillText(location.host, P, H - P);
+
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    const file = new File([blob], 'noventis.png', { type: 'image/png' });
+    const text = `${t('share_title')}: ${list.map(f => tx(FIELDS[f.id].name)).join(', ')} — ${location.origin}`;
+    // на телефоне — системное меню «Поделиться» (Telegram, Instagram), на компьютере — просто скачать
+    if (matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], text }).catch(() => {});
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'noventis.png'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      toast(t('share_saved'));
+    }
+  } finally { btn.disabled = false; }
 }
 
 // ---------- старт ----------
