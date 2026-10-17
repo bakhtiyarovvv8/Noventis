@@ -493,6 +493,19 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
 .heart.on { color: var(--gold); border-color: rgba(226,189,127,.6); background: rgba(226,189,127,.1); }
 .list li .heart { width: 28px; height: 28px; font-size: 15px; margin-left: 6px; transform: translateY(2px); }
 .list li .tag + .heart { margin-left: 8px; }
+.filters:has(> :only-child) { grid-template-columns: 1fr; }
+/* подбор вузов: топ по фильтру */
+.fd { margin-bottom: 18px; }
+.fd-count { color: var(--ink-3); font-size: 14px; margin: 6px 0 14px; }
+.fd-count b { color: var(--gold-2); }
+.uni-rank { flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-size: 13px; color: var(--gold); border: 1px solid rgba(226,189,127,.4); }
+.uni-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.uni-tags em { font-style: normal; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--ink-3); }
+.uni-price { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; text-align: right; min-width: 120px; }
+.uni-price b { font-family: var(--display); font-weight: 500; font-size: 17px; color: var(--gold-2); }
+.uni-price small { font-size: 11px; color: var(--ink-3); }
+.uni-acts { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.cat-all-head { font-size: clamp(22px, 2.6vw, 32px); margin: 48px 0 16px; }
 .more-row { display: flex; justify-content: center; margin-top: 22px; }
 .source { color: var(--ink-3); font-size: 12px; margin-top: 30px; }
 .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
@@ -556,6 +569,8 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
   .cmp-row > span:nth-child(2) { grid-column: 1; } .cmp-row > span:nth-child(3) { grid-column: 2; }
   .uni { flex-wrap: wrap; }
   .uni .meta { flex: 1 1 calc(100% - 100px); }
+  .uni-price { align-items: flex-start; text-align: left; }
+  .uni-acts { width: 100%; }
   .uni.dl .btn { flex: 1 1 0; }
   .en-bar { top: 72px; gap: 10px; padding-left: 16px; border-radius: var(--radius-sm); }
   .en-opts { grid-template-columns: 1fr 1fr; }

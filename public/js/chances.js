@@ -1,6 +1,6 @@
 // Калькулятор шансов: баллы → «с запасом / реально / мечта»
 const $ = id => document.getElementById(id);
-const CCS = [...new Set(UNI_REQ.map(u => u[1]))];
+const CCS = [...new Set(UNIS.map(u => u[1]))];
 let picked = new Set();   // пусто — все страны
 
 // форма запоминается в браузере, чтобы не вводить заново
@@ -61,7 +61,7 @@ function render() {
   const me = readForm();
   $('gpaV').textContent = me.gpa.toFixed(1);
   try { localStorage.setItem(STORE, JSON.stringify({ ielts: $('ielts').value, sat: $('sat').value, gpa: $('gpa').value, olymp: $('olymp').value, ru: me.ru })); } catch {}
-  const unis = UNI_REQ.filter(u => !picked.size || picked.has(u[1]));
+  const unis = UNIS.filter(u => !picked.size || picked.has(u[1]));
   const groups = { safe: [], match: [], reach: [] };
   unis.forEach(u => { const j = judge(u, me); groups[j.cat].push({ u, ...j }); });
   Object.values(groups).forEach(g => g.sort((a, b) => a.u[5] - b.u[5] || b.m - a.m));

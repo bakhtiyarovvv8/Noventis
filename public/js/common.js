@@ -183,7 +183,10 @@ const UI = {
 
   // каталог вузов
   cat_title: L('Все вузы мира', 'All universities in the world'),
-  cat_lead: L('Более 10 000 университетов из 200 стран. Ищи по названию или выбери страну.', 'Over 10,000 universities in 200 countries. Search by name or pick a country.'),
+  cat_lead: L('Сверху — топ-вузы с ценами и сильными направлениями: выбери страну, бюджет и направление. Ниже — все 10 000+ вузов из 200 стран.', 'Top universities with prices and strong fields on top: pick a country, budget and field. Below — all 10,000+ universities in 200 countries.'),
+  cat_all_title: L('Все вузы мира', 'All universities in the world'),
+  cat_budget_note: L('бюджет — по средней цене государственного вуза в стране', 'budget uses the average public university price in the country'),
+  cat_field_note: L('направления известны только у вузов из топа выше', 'fields are known only for the top universities above'),
   cat_search: L('Название вуза', 'University name'), cat_all: L('Все страны', 'All countries'),
   cat_found: L('Найдено', 'Found'), cat_more: L('Показать ещё', 'Show more'),
   cat_site: L('Сайт', 'Website'), cat_google: L('Найти в Google', 'Search Google'),
@@ -193,7 +196,9 @@ const UI = {
 
   // избранное
   fav_title: L('Избранные вузы', 'Saved universities'),
-  fav_empty: L('Пока пусто. Нажми ♡ рядом с вузом в результате теста или в каталоге.', 'Nothing yet. Tap ♡ next to a university in your results or the catalogue.'),
+  fav_empty: L('Пока пусто. Нажми ♡ у вуза в списке ниже, в результате теста или в «Вузах мира».', 'Nothing yet. Tap ♡ next to a university below, in your test results or in “World universities”.'),
+  fav_lead: L('Твои вузы — с ценой и переходом в калькуляторы. Ниже — подбор новых вузов по стране, бюджету и направлению.', 'Your universities — with prices and links to the calculators. Below — find new ones by country, budget and field.'),
+  fav_find: L('Подобрать вузы', 'Find universities'), fav_count: L('Вузов в избранном', 'Saved universities'),
   fav_added: L('Добавлено в избранное', 'Saved'), fav_removed: L('Убрано из избранного', 'Removed'),
   fav_login: L('Войди, чтобы сохранять вузы', 'Log in to save universities'),
   fav_limit: L('В избранном уже 300 вузов — убери лишние', 'You already have 300 saved — remove some first'),

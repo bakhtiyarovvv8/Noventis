@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Noventis — избранные вузы</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="test-page">
+  <div class="test-bg"><img src="/img/london.jpg" alt=""></div>
+  <header class="nav scrolled">
+    <div class="container">
+      <a href="/" class="wordmark">Noventis<span>.</span></a>
+      <nav class="nav-links">
+        <a href="/tools" data-i18n="nav_tools"></a>
+        <a href="/catalog" data-i18n="nav_unis"></a>
+      </nav>
+      <div class="nav-right">
+        <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="uz">UZ</button><button data-lang="en">EN</button></div>
+        <div class="nav-auth"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="page-head">
+      <span class="kicker" data-i18n="nav_tools"></span>
+      <h1 data-i18n="fav_title"></h1>
+      <p data-i18n="fav_lead"></p>
+    </div>
+    <div id="mine"></div>
+    <h2 class="cat-all-head" data-i18n="fav_find"></h2>
+    <div id="finder"></div>
+    <div class="more-row" style="justify-content:flex-start"><a class="btn btn-ghost" href="/catalog" data-i18n="cat_all_link"></a></div>
+    <p class="source" data-i18n="co_note"></p>
+  </main>
+
+  <script src="/vendor/gsap.min.js"></script>
+  <script src="/js/data.js"></script>
+  <script src="/js/uz.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/abroad.js"></script>
+  <script src="/js/unis-data.js"></script>
+  <script src="/js/finder.js"></script>
+  <script>
+    const $mine = document.getElementById('mine');
+
+    // Мои ♡: вузы из топа — с ценой и кнопками калькуляторов, остальные — со ссылкой на сайт
+    function renderMine() {
+      if (!ME) {
+        $mine.innerHTML = `<div class="empty">${t('fav_login')}<div class="more-row"><a class="btn btn-gold" href="/auth?next=/favorites">${t('nav_login')}</a></div></div>`;
+        return;
+      }
+      const favs = [...FAVS.values()];
+      if (!favs.length) { $mine.innerHTML = `<div class="empty">${t('fav_empty')}</div>`; return; }
+      $mine.innerHTML = `<p class="count">${t('fav_count')}: ${favs.length}</p><div class="uni-list">${favs.map(f => {
+        const u = findUni(f.name, /^[A-Z]{2}$/.test(f.place) ? f.place : null);
+        if (u) return uniCard(u, null, null);
+        return `<div class="uni"><div class="meta"><b>${escapeHtml(nm(f.name))}</b><span>${escapeHtml(placeName(f.place))}</span></div>
+          ${f.web ? `<a class="site" href="${escapeHtml(f.web)}" target="_blank" rel="noopener noreferrer">${t('cat_site')} ↗</a>` : ''}${heart(f.name, f.place, f.web)}</div>`;
+      }).join('')}</div>`;
+    }
+
+    document.addEventListener('favchange', renderMine);
+    document.addEventListener('langchange', renderMine);
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadMe(); await loadFavs();
+      renderMine();
+      mountFinder(document.getElementById('finder'), { limit: 20 });
+      gsap.from('.page-head > *, #mine, .fd', { y: 30, opacity: 0, stagger: .07, duration: 1, ease: 'expo.out' });
+    });
+  </script>
+</body>
+</html>
