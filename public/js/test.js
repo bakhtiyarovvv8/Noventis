@@ -233,14 +233,15 @@ function fieldCard(f, rank, inner) {
   const why = whyFor(f.id, current.answers);
   return `<article class="card field-card">
     <div class="top">
-      <div class="glyph">${F.glyph}</div>
+      <div class="glyph">${escapeHtml(F.glyph)}</div>
       <div><div class="rank">#${rank}</div><h3>${tx(F.name)}</h3></div>
     </div>
     <div class="meter"><div class="bar"><span data-w="${f.pct}"></span></div><b>${f.pct}%</b></div>
     <p class="desc">${tx(F.desc)}</p>
     ${why.length ? `<div class="why"><h4>${t('why_title')}</h4><div class="profile-chips">${why.map(x => `<span class="chip gold">${escapeHtml(x.t)} <b>+${x.w}</b></span>`).join('')}</div></div>` : ''}
     ${inner}
-    <p class="note"><a href="/resources?area=${Object.keys(AREAS).find(a => AREAS[a].f.includes(f.id))}" style="color:var(--gold)">${t('rs_field')}</a></p>
+    <p class="note"><a href="/careers?f=${f.id}" style="color:var(--gold)">${t('cr_day')} →</a> &nbsp;·&nbsp;
+      <a href="/resources?area=${Object.keys(AREAS).find(a => AREAS[a].f.includes(f.id))}" style="color:var(--gold)">${t('rs_field')}</a></p>
   </article>`;
 }
 
@@ -371,7 +372,7 @@ function renderPrep(s) {
 
   return head('res_prep_title', s)
     + alerts.map(a => `<div class="alert">${a}</div>`).join('')
-    + `<article class="card field-card"><div class="top"><div class="glyph">${F.glyph}</div><div><div class="rank">${ru ? 'Направление' : 'Field'}</div><h3>${tx(F.name)}</h3></div></div>
+    + `<article class="card field-card"><div class="top"><div class="glyph">${escapeHtml(F.glyph)}</div><div><div class="rank">${ru ? 'Направление' : 'Field'}</div><h3>${tx(F.name)}</h3></div></div>
         <h4 class="rank" style="margin:8px 0 14px">${t('exams_needed')}</h4><ul class="list">${exams.join('')}</ul></article>`
     + `<article class="card"><h4 class="rank" style="margin:0 0 24px">${t('roadmap')}</h4><div class="timeline">${tl}</div></article>`
     + `<article class="card"><h4 class="rank" style="margin:0 0 18px">${t('week_plan')} · ${H}${ru ? ' ч/нед' : ' h/wk'}</h4><div class="week">${week}</div></article>`

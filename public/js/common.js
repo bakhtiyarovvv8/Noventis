@@ -178,6 +178,18 @@ const UI = {
   rs_exams: L('Экзамены', 'Exams'), rs_areas: L('Сферы', 'Fields'), rs_all: L('Для всех', 'For everyone'),
   rs_count: L('ресурсов', 'resources'), rs_field: L('Ресурсы по сфере →', 'Resources for this field →'),
 
+  // профессии: день из жизни и сравнение
+  cr_title: L('Профессии', 'Careers'),
+  cr_lead: L('43 направления: как проходит рабочий день, сколько платят, сколько учиться и что сложного. Сравни любые две.', '43 fields: what a workday looks like, pay, years of study and the hard parts. Compare any two.'),
+  cr_search: L('Найти профессию', 'Find a career'), cr_day: L('День из жизни', 'A day in the life'),
+  cr_years: L('Учёба до первой работы', 'Study before first job'), cr_years_u: L('лет', 'years'),
+  cr_pros: L('Плюсы', 'Pros'), cr_cons: L('Минусы', 'Cons'), cr_path: L('Путь в профессию', 'How to get in'),
+  cr_subj: L('Главные предметы', 'Key subjects'), cr_jobs: L('Профессии и зарплаты', 'Jobs and salaries'),
+  cr_cmp: L('Сравнить', 'Compare'), cr_cmp_go: L('Сравнить выбранные', 'Compare selected'),
+  cr_pick2: L('Отметь две профессии, чтобы сравнить их бок о бок.', 'Tick two careers to compare them side by side.'),
+  cr_back: L('← Все профессии', '← All careers'), cr_more: L('Подробнее →', 'Details →'),
+  cr_unis: L('Сильные вузы', 'Top universities'), cr_links: L('Дальше', 'Next steps'),
+
   // навигация внутренних страниц и хаб инструментов
   nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'),
   tools_title: L('Инструменты', 'Tools'),
