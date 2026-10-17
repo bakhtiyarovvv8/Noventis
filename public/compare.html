@@ -45,7 +45,7 @@
 
     function render() {
       if (!A || !B) { app.innerHTML = `<div class="empty">${t('cmp_none')}</div>`; return; }
-      if (A.category !== B.category || A.category === 'prep') { app.innerHTML = `<div class="empty">${t('cmp_same')}</div>`; return; }
+      if (A.category !== B.category || !['university', 'work'].includes(A.category)) { app.innerHTML = `<div class="empty">${t('cmp_same')}</div>`; return; }
       const a = pctMap(A), b = pctMap(B);
       // все направления, которые есть хотя бы в одном результате; у старых результатов новых направлений нет
       const rows = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(id => FIELDS[id])

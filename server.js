@@ -251,7 +251,7 @@ async function api(req, res, url) {
 
   if (route === 'POST /api/results') {
     const { category, answers = {}, summary = {} } = await readBody(req);
-    if (!['university', 'work', 'prep'].includes(category)) return json(res, 400, { error: 'bad_category' });
+    if (!['university', 'work', 'prep', 'english'].includes(category)) return json(res, 400, { error: 'bad_category' });
     if (!isPlainObject(answers) || !isPlainObject(summary)) return json(res, 400, { error: 'bad_json' });
     const n = await one('SELECT COUNT(*) AS c FROM results WHERE user_id = ?', user.id);
     if (Number(n.c) >= 200) return json(res, 400, { error: 'too_many' });

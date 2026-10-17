@@ -240,6 +240,7 @@ function fieldCard(f, rank, inner) {
     <p class="desc">${tx(F.desc)}</p>
     ${why.length ? `<div class="why"><h4>${t('why_title')}</h4><div class="profile-chips">${why.map(x => `<span class="chip gold">${escapeHtml(x.t)} <b>+${x.w}</b></span>`).join('')}</div></div>` : ''}
     ${inner}
+    <p class="note"><a href="/resources?area=${Object.keys(AREAS).find(a => AREAS[a].f.includes(f.id))}" style="color:var(--gold)">${t('rs_field')}</a></p>
   </article>`;
 }
 
@@ -493,6 +494,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const rid = params.get('result');
   if (rid) {
     const r = await api('/api/results/' + encodeURIComponent(rid));
+    if (r.ok && r.data.category === 'english') { location.replace('/english?result=' + rid); return; }
     if (r.ok) {
       current = r.data;
       document.getElementById('bg').src = CATEGORIES[current.category].img;

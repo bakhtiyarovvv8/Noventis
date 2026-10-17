@@ -367,6 +367,22 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
 .cost-cell span { font-size: 13px; color: var(--ink-3); }
 .cost-cell.big { border-color: rgba(226,189,127,.5); background: rgba(226,189,127,.08); }
 .cost-cell.big b { color: var(--gold-2); font-size: 28px; }
+/* тест английского */
+.en-bar { position: sticky; top: 86px; z-index: 5; display: flex; align-items: center; gap: 18px; padding: 12px 16px 12px 22px; margin-bottom: 18px; border-radius: 999px; border: 1px solid var(--line-2); background: rgba(12,14,21,.85); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); font-size: 14px; color: var(--ink-2); }
+.en-bar span:nth-child(2) { margin-left: auto; }
+.en-bar b { font-family: var(--display); font-weight: 500; color: var(--ink); }
+.en-bar b.late { color: var(--danger); }
+.en-bar .btn { height: 40px; padding: 0 18px; font-size: 14px; }
+.en-q { padding: 18px 0; border-bottom: 1px solid var(--line); }
+.en-q:last-child { border-bottom: 0; }
+.en-q > b { display: block; margin-bottom: 12px; font-size: 16px; }
+.en-opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.en-opts .opt { padding: 12px 14px 12px 44px; font-size: 14px; }
+.en-opts .opt::before { left: 14px; width: 18px; height: 18px; margin-top: -9px; }
+.en-text { margin: 18px 0 4px; padding: 20px 22px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--line); }
+.en-text h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.en-text p { margin: 0; color: var(--ink-2); line-height: 1.7; }
+
 /* план по неделям */
 .plan-week { padding: 22px 26px; }
 .plan-week.now { border-color: rgba(226,189,127,.55); box-shadow: 0 0 0 1px rgba(226,189,127,.2); }
@@ -485,6 +501,8 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
   .uni { flex-wrap: wrap; }
   .uni .meta { flex: 1 1 calc(100% - 100px); }
   .uni.dl .btn { flex: 1 1 0; }
+  .en-bar { top: 72px; gap: 10px; padding-left: 16px; border-radius: var(--radius-sm); }
+  .en-opts { grid-template-columns: 1fr 1fr; }
 }
 /* печать / «Сохранить как PDF»: светлый отчёт без меню и кнопок */
 @media print {

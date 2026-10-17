@@ -158,6 +158,26 @@ const UI = {
   pl_show_all: L('Показать все недели', 'Show all weeks'), pl_hide: L('Только ближайшие', 'Upcoming only'),
   pl_open: L('План по неделям', 'Weekly plan'),
 
+  // мини-тест английского
+  en_title: L('Тест английского', 'English test'),
+  en_lead: L('30 вопросов за 10 минут: грамматика, слова и чтение. Узнаешь уровень и примерный балл IELTS.', '30 questions in 10 minutes: grammar, vocabulary and reading. Find out your level and an approximate IELTS score.'),
+  en_start: L('Начать тест', 'Start the test'), en_time: L('Осталось', 'Time left'),
+  en_finish: L('Завершить', 'Finish'), en_result: L('Твой уровень английского', 'Your English level'),
+  en_band: L('Примерно IELTS', 'Approx. IELTS'), en_correct: L('верных ответов', 'correct answers'),
+  en_note: L('Это быстрая оценка, а не настоящий IELTS: в нём есть ещё Writing и Speaking. Используй её, чтобы понять, с чего начать подготовку.', 'This is a quick estimate, not a real IELTS — the exam also has Writing and Speaking. Use it to see where to start.'),
+  en_next: L('Что делать дальше', 'What to do next'),
+  en_tip_low: L('Начни с базы: грамматика A2–B1 и 15–20 новых слов в день. Через 2–3 месяца пройди тест снова.', 'Start with the basics: A2–B1 grammar and 15–20 new words a day. Retake in 2–3 months.'),
+  en_tip_mid: L('Ты близко к B2. Переходи на материалы IELTS: Reading и Listening каждый день, Writing 2 раза в неделю.', 'You’re close to B2. Move to IELTS materials: Reading and Listening daily, Writing twice a week.'),
+  en_tip_high: L('Сильный уровень! Тренируй Writing и Speaking на время и запишись на IELTS.', 'Strong level! Practise timed Writing and Speaking and book your IELTS.'),
+  en_resources: L('Бесплатные ресурсы', 'Free resources'), en_retake: L('Пройти ещё раз', 'Retake'),
+  en_text: L('Прочитай текст и ответь на вопросы', 'Read the text and answer the questions'),
+
+  // бесплатные ресурсы
+  rs_title: L('Бесплатные ресурсы', 'Free resources'),
+  rs_lead: L('Проверенные бесплатные курсы и сайты для подготовки к экзаменам и по каждой сфере.', 'Hand-picked free courses and websites for exam prep and every field.'),
+  rs_exams: L('Экзамены', 'Exams'), rs_areas: L('Сферы', 'Fields'), rs_all: L('Для всех', 'For everyone'),
+  rs_count: L('ресурсов', 'resources'), rs_field: L('Ресурсы по сфере →', 'Resources for this field →'),
+
   // навигация внутренних страниц и хаб инструментов
   nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'),
   tools_title: L('Инструменты', 'Tools'),

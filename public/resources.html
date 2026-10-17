@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Noventis — бесплатные ресурсы</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="test-page">
+  <div class="test-bg"><img src="/img/students.jpg" alt=""></div>
+  <header class="nav scrolled">
+    <div class="container">
+      <a href="/" class="wordmark">Noventis<span>.</span></a>
+      <nav class="nav-links">
+        <a href="/tools" data-i18n="nav_tools"></a>
+        <a href="/catalog" data-i18n="nav_unis"></a>
+      </nav>
+      <div class="nav-right">
+        <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+        <div class="nav-auth"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="page-head">
+      <span class="kicker" data-i18n="nav_tools"></span>
+      <h1 data-i18n="rs_title"></h1>
+      <p data-i18n="rs_lead"></p>
+    </div>
+    <h4 class="rank" style="margin:0 0 10px" data-i18n="rs_exams"></h4>
+    <div class="chips-pick" id="exams" style="margin-bottom:16px"></div>
+    <h4 class="rank" style="margin:0 0 10px" data-i18n="rs_areas"></h4>
+    <div class="chips-pick" id="areas" style="margin-bottom:22px"></div>
+    <p class="count" id="count"></p>
+    <div class="tools-grid" id="list"></div>
+  </main>
+
+  <script src="/vendor/gsap.min.js"></script>
+  <script src="/js/data.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/resources-data.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    // выбран один фильтр: экзамен, сфера или «для всех»
+    let tag = params.get('exam') || params.get('area') || 'all';
+
+    function render() {
+      const chip = (k, label) => `<button type="button" class="chip-btn ${tag === k ? 'on' : ''}" data-tag="${k}">${label}</button>`;
+      document.getElementById('exams').innerHTML = Object.entries(EXAMS_LIST).map(([k, n]) => chip(k, tx(n))).join('');
+      document.getElementById('areas').innerHTML = chip('all', t('rs_all')) + Object.entries(AREAS).map(([k, a]) => chip(k, tx(a.t))).join('');
+      const list = RESOURCES.filter(r => r.tags.includes(tag));
+      document.getElementById('count').textContent = `${list.length} ${t('rs_count')}`;
+      document.getElementById('list').innerHTML = list.map(r => `
+        <a class="tool" href="${r.url}" target="_blank" rel="noopener noreferrer">
+          <b>${escapeHtml(r.n)} ↗</b><span>${tx(r.d)}</span><span class="note" style="margin:auto 0 0">${new URL(r.url).hostname.replace(/^www\./, '')}</span></a>`).join('');
+    }
+    document.addEventListener('click', e => {
+      const c = e.target.closest('[data-tag]');
+      if (!c) return;
+      tag = c.dataset.tag;
+      const u = new URL(location.href); u.search = ''; if (tag !== 'all') u.searchParams.set(EXAMS_LIST[tag] ? 'exam' : 'area', tag);
+      history.replaceState(null, '', u);
+      render();
+    });
+    document.addEventListener('langchange', render);
+    document.addEventListener('DOMContentLoaded', () => {
+      loadMe(); render();
+      gsap.from('.page-head > *', { y: 30, opacity: 0, stagger: .06, duration: 1, ease: 'expo.out' });
+    });
+  </script>
+</body>
+</html>

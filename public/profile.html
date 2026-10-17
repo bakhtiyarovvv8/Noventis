@@ -42,8 +42,14 @@
     }
     const app = document.getElementById('app');
 
+    // тест английского живёт на своей странице, остальные — в /test
+    const catTitle = c => c === 'english' ? t('en_title') : tx(CATEGORIES[c].title);
+    const openHref = r => r.category === 'english' ? `/english?result=${r.id}` : `/test?result=${r.id}`;
+    const comparable = r => r.category === 'university' || r.category === 'work';
+
     function resultTitle(r) {
       const s = r.summary;
+      if (r.category === 'english') return `${s.cefr} · IELTS ≈ ${s.band} · ${s.score}/${s.total}`;
       if (r.category === 'prep') return FIELDS[s.field] ? tx(FIELDS[s.field].name) : '';
       return (s.fields || []).slice(0, 3).map(f => `${tx(FIELDS[f.id].name)} ${f.pct}%`).join(' · ');
     }
@@ -64,17 +70,17 @@
         <div class="res-list" style="margin-top:18px">
           ${results.length ? results.map(r => `
             <div class="res-item" data-id="${r.id}">
-              <div class="glyph">${r.category === 'prep' ? '✎' : r.category === 'work' ? '◆' : '▲'}</div>
-              <div class="meta"><b>${tx(CATEGORIES[r.category].title)}</b>
+              <div class="glyph">${{ prep: '✎', work: '◆', english: 'Aa' }[r.category] || '▲'}</div>
+              <div class="meta"><b>${catTitle(r.category)}</b>
                 <span>${new Date(r.created_at.replace(' ', 'T') + 'Z').toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })} · ${resultTitle(r)}</span></div>
               <div class="actions">
-                ${r.category !== 'prep' ? `<label class="pick"><input type="checkbox" class="cmp" value="${r.id}" data-cat="${r.category}">${t('cmp_mark')}</label>` : ''}
-                <a class="btn btn-gold" href="/test?result=${r.id}">${t('open')}</a>
+                ${comparable(r) ? `<label class="pick"><input type="checkbox" class="cmp" value="${r.id}" data-cat="${r.category}">${t('cmp_mark')}</label>` : ''}
+                <a class="btn btn-gold" href="${openHref(r)}">${t('open')}</a>
                 <button class="btn btn-ghost del">${t('delete')}</button>
               </div>
             </div>`).join('') : `<div class="empty">${t('no_results')}</div>`}
         </div>
-        ${results.filter(r => r.category !== 'prep').length > 1 ? `<div class="more-row" style="justify-content:flex-start;align-items:center;gap:14px">
+        ${results.filter(comparable).length > 1 ? `<div class="more-row" style="justify-content:flex-start;align-items:center;gap:14px">
           <button class="btn btn-ghost" id="cmpGo" disabled>${t('cmp_btn')}</button><span class="note" style="margin:0">${t('cmp_pick')}</span></div>` : ''}
         <span class="kicker" id="favorites" style="margin-top:56px">${t('fav_title')}</span>
         <div class="uni-list" style="margin-top:18px">
