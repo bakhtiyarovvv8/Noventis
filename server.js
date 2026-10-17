@@ -157,6 +157,23 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const str = v => (typeof v === 'string' ? v : '');
 const isPlainObject = v => !!v && typeof v === 'object' && !Array.isArray(v);
 
+let rateCache = { t: 0, data: { rate: null, date: null } };
+async function usdRate() {
+  if (Date.now() - rateCache.t < 6 * 36e5) return rateCache.data;
+  try {
+    const r = await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/USD/', { signal: AbortSignal.timeout(5000) });
+    const [usd] = await r.json();
+    const rate = Number(usd.Rate);
+    if (!(rate > 0)) throw new Error('bad rate');
+    rateCache = { t: Date.now(), data: { rate, date: String(usd.Date) } };
+  } catch (e) {
+    // ЦБ недоступен — отдаём последний известный курс, повторим через 10 минут
+    rateCache.t = Date.now() - 6 * 36e5 + 6e5;
+    console.error('Курс ЦБ:', e.message);
+  }
+  return rateCache.data;
+}
+
 async function api(req, res, url) {
   // Если сервер стоит за Cloudflare, напрямую на Render к API не пускаем.
   if (PROXY_KEY && !viaCloudflare(req)) return json(res, 403, { error: 'forbidden' });
@@ -166,6 +183,9 @@ async function api(req, res, url) {
   if (overLimit(apiHits, ip, 300)) return json(res, 429, { error: 'too_many' });
 
   if (route === 'GET /api/health') return json(res, 200, { ok: true });
+
+  // курс доллара ЦБ Узбекистана для калькулятора стоимости, кэш 6 часов
+  if (route === 'GET /api/rate') return json(res, 200, await usdRate());
 
   if (route === 'POST /api/register') {
     const body = await readBody(req);
