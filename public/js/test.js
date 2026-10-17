@@ -245,8 +245,11 @@ function fieldCard(f, rank, inner) {
   </article>`;
 }
 
+// Текст на трёх языках для строк, собранных из частей (в словарь uz.js такие не попадают)
+const T3 = (ru, en, uz) => tx({ ru, en, uz });
+
 function otherFields(list) {
-  return `<article class="card"><h4 class="rank" style="margin:0 0 18px">${LANG === 'ru' ? 'Остальные направления' : 'Other fields'}</h4>
+  return `<article class="card"><h4 class="rank" style="margin:0 0 18px">${T3('Остальные направления', 'Other fields', 'Boshqa yoʻnalishlar')}</h4>
     <div class="mini-bars">${list.map(f => `<div><span>${tx(FIELDS[f.id].name)}</span><i><span style="width:${f.pct}%"></span></i><b>${f.pct}%</b></div>`).join('')}</div></article>`;
 }
 
@@ -260,11 +263,11 @@ function renderUniversity(s) {
     const pref = F.world.filter(([, r]) => regions.includes(r));
     const rest = F.world.filter(([, r]) => !regions.includes(r));
     const unis = [...pref, ...rest].slice(0, 7)
-      .map(([n, r]) => `<li class="${regions.includes(r) ? 'pref' : ''}">${n}<span class="tag">${tx(REGIONS[r])}</span>${heart(n, r)}</li>`).join('');
+      .map(([n, r]) => `<li class="${regions.includes(r) ? 'pref' : ''}">${nm(n)}<span class="tag">${tx(REGIONS[r])}</span>${heart(n, r)}</li>`).join('');
     return fieldCard(f, i + 1, `<div class="cols">
       <div><h4>${t('where_strong')}</h4>${li(F.hubs.map(tx))}</div>
       <div><h4>${t('unis_world')}${pref.length ? ` · <span style="color:var(--gold)">${t('your_regions')}</span>` : ''}</h4><ul class="list">${unis}</ul></div>
-      <div><h4>${t('unis_uz')}</h4><ul class="list">${F.uz.map(n => `<li>${n}<span class="tag"></span>${heart(n, 'uz')}</li>`).join('')}</ul>
+      <div><h4>${t('unis_uz')}</h4><ul class="list">${F.uz.map(n => `<li>${nm(n)}<span class="tag"></span>${heart(n, 'uz')}</li>`).join('')}</ul>
         <p class="note"><a href="/catalog" style="color:var(--gold)">${t('cat_all_link')}</a></p></div>
     </div>`);
   }).join('');
@@ -277,8 +280,8 @@ function renderUniversity(s) {
     + top
     + `<article class="card"><div class="cols">
         <div><h4>${t('grants')}</h4>${li(grants)}</div>
-        ${tips.length ? `<div><h4>${LANG === 'ru' ? 'Твои языки — твой козырь' : 'Your languages are your edge'}</h4>${li(tips)}</div>` : ''}
-      </div>${s.budget === 'grant' || s.budget === 'low' ? `<p class="note">${LANG === 'ru' ? 'С твоим бюджетом делай ставку на гранты: Германия, Венгрия, Турция, Корея, Китай и государственный грант в Узбекистане.' : 'With your budget, focus on grants: Germany, Hungary, Turkey, Korea, China and the state grant in Uzbekistan.'}</p>` : ''}</article>`
+        ${tips.length ? `<div><h4>${T3('Твои языки — твой козырь', 'Your languages are your edge', 'Tillaringiz — sizning ustunligingiz')}</h4>${li(tips)}</div>` : ''}
+      </div>${s.budget === 'grant' || s.budget === 'low' ? `<p class="note">${T3('С твоим бюджетом делай ставку на гранты: Германия, Венгрия, Турция, Корея, Китай и государственный грант в Узбекистане.', 'With your budget, focus on grants: Germany, Hungary, Turkey, Korea, China and the state grant in Uzbekistan.', 'Byudjetingiz bilan grantlarga eʼtibor bering: Germaniya, Vengriya, Turkiya, Koreya, Xitoy va Oʻzbekiston davlat granti.')}</p>` : ''}</article>`
     + otherFields(s.fields.slice(3, 9));
 }
 
@@ -313,7 +316,7 @@ function renderWork(s) {
     + top
     + `<article class="card"><div class="cols">
         <div><h4>${t('platforms')}</h4>${li(plats)}</div>
-        ${expTip ? `<div><h4>${LANG === 'ru' ? 'Совет по опыту' : 'Experience tip'}</h4>${li([tx(expTip)])}</div>` : ''}
+        ${expTip ? `<div><h4>${T3('Совет по опыту', 'Experience tip', 'Tajriba boʻyicha maslahat')}</h4>${li([tx(expTip)])}</div>` : ''}
       </div><p class="note">${t('salary_note')}</p></article>`
     + otherFields(s.fields.slice(3, 9));
 }
@@ -324,25 +327,36 @@ function renderPrep(s) {
   const needEng = foreign && !['c1', 'ielts'].includes(s.eng);
   const M = s.when;
   const alerts = [];
-  if (M <= 6) alerts.push(LANG === 'ru' ? 'Сжатые сроки: сосредоточься на одном главном экзамене и документах. Остальное — по возможности.' : 'Tight timeline: focus on one main exam and documents. Everything else is optional.');
+  if (M <= 6) alerts.push(T3('Сжатые сроки: сосредоточься на одном главном экзамене и документах. Остальное — по возможности.', 'Tight timeline: focus on one main exam and documents. Everything else is optional.', 'Muddat qisqa: bitta asosiy imtihon va hujjatlarga eʼtibor bering. Qolgani — imkon boʻlsa.'));
   if (needEng && lowEnglish(s) && M <= 12) alerts.push(t('eng_warn'));
-  if (s.fieldGuessed) alerts.push(LANG === 'ru' ? `Направление ещё не выбрано — по твоим предметам ближе всего «${tx(F.name)}». Пройди тест «Университет», чтобы уточнить.` : `No field chosen yet — based on your subjects, “${tx(F.name)}” fits best. Take the “University” test to confirm.`);
+  if (s.fieldGuessed) alerts.push(T3(`Направление ещё не выбрано — по твоим предметам ближе всего «${tx(F.name)}». Пройди тест «Университет», чтобы уточнить.`, `No field chosen yet — based on your subjects, “${tx(F.name)}” fits best. Take the “University” test to confirm.`, `Yoʻnalish hali tanlanmagan — fanlaringiz boʻyicha «${tx(F.name)}» eng yaqin. Aniqlashtirish uchun «Universitet» testidan oʻting.`));
 
   // экзамены
-  const exams = (s.targets.length ? s.targets : ['uz']).map(k => `<li><div><b>${tx(REGIONS[k] || { ru: 'Узбекистан (междунар. вузы)', en: 'Uzbekistan (international unis)' })}:</b>&nbsp;${tx(EXAMS[k].n)}<br><span style="color:var(--ink-3);font-size:13px">${tx(EXAMS[k].d)}</span></div></li>`);
+  const exams = (s.targets.length ? s.targets : ['uz']).map(k => `<li><div><b>${tx(REGIONS[k] || { ru: 'Узбекистан (междунар. вузы)', en: 'Uzbekistan (international unis)', uz: 'Oʻzbekiston (xalqaro oliygohlar)' })}:</b>&nbsp;${tx(EXAMS[k].n)}<br><span style="color:var(--ink-3);font-size:13px">${tx(EXAMS[k].d)}</span></div></li>`);
 
   // дорожная карта: этапы распределяются по доступным месяцам
   const subj = subjectsOf(s.field).map(tx).join(', ');
-  const ru = LANG === 'ru';
+  const mocks = { foreign, us: s.targets.includes('us'), uz: s.targets.includes('uz') };
+  const examList = (s.targets.length ? s.targets : ['uz']).map(k => tx(EXAMS[k].n)).join('; ');
+  const port = needsPortfolio(s.field);
   const stages = [
-    { p: .06, h: ru ? 'Диагностика' : 'Diagnosis', d: ru ? `Пробный тест${foreign ? ' IELTS' : ''}${s.targets.includes('us') ? ' и SAT' : ''}${s.targets.includes('uz') ? ' и пробник uzbmb' : ''}. Определи разрыв до нужного балла.` : `Mock test${foreign ? ' IELTS' : ''}${s.targets.includes('us') ? ' and SAT' : ''}${s.targets.includes('uz') ? ' and uzbmb mock' : ''}. Find the gap to your target score.` },
-    { p: .45, h: ru ? 'База' : 'Foundation', d: ru ? `Профильные предметы: ${subj}.${needEng ? ' Английский каждый день — цель IELTS 6.5.' : ''}` : `Core subjects: ${subj}.${needEng ? ' English daily — target IELTS 6.5.' : ''}` },
-    { p: .7, h: ru ? 'Экзамены' : 'Exams', d: ru ? `Сдача: ${(s.targets.length ? s.targets : ['uz']).map(k => tx(EXAMS[k].n)).join('; ')}. Оставь время на пересдачу.` : `Take: ${(s.targets.length ? s.targets : ['uz']).map(k => tx(EXAMS[k].n)).join('; ')}. Leave time for a retake.` },
-    { p: .85, h: ru ? 'Документы' : 'Documents', d: ru ? `${foreign ? 'Мотивационное письмо, 2 рекомендации, перевод и апостиль аттестата' : 'Аттестат, паспорт, фото, регистрация на my.gov.uz'}${needsPortfolio(s.field) ? ', портфолио' : ''}.` : `${foreign ? 'Motivation letter, 2 recommendations, translated & apostilled diploma' : 'Diploma, passport, photos, registration on my.gov.uz'}${needsPortfolio(s.field) ? ', portfolio' : ''}.` },
-    { p: 1, h: ru ? 'Подача и гранты' : 'Applications & grants', d: ru ? 'Подай в 5–8 вузов: 2 мечты, 3 реальных, 2 запасных. Параллельно — заявки на гранты.' : 'Apply to 5–8 universities: 2 dream, 3 match, 2 safety. Apply for grants in parallel.' },
+    { p: .06, h: T3('Диагностика', 'Diagnosis', 'Diagnostika'),
+      d: T3(`Пробный тест${mocks.foreign ? ' IELTS' : ''}${mocks.us ? ' и SAT' : ''}${mocks.uz ? ' и пробник uzbmb' : ''}. Определи разрыв до нужного балла.`,
+        `Mock test${mocks.foreign ? ' IELTS' : ''}${mocks.us ? ' and SAT' : ''}${mocks.uz ? ' and uzbmb mock' : ''}. Find the gap to your target score.`,
+        `Sinov testi${mocks.foreign ? ' IELTS' : ''}${mocks.us ? ' va SAT' : ''}${mocks.uz ? ' va uzbmb sinovi' : ''}. Kerakli ballgacha qancha qolganini aniqlang.`) },
+    { p: .45, h: T3('База', 'Foundation', 'Asos'),
+      d: T3(`Профильные предметы: ${subj}.${needEng ? ' Английский каждый день — цель IELTS 6.5.' : ''}`, `Core subjects: ${subj}.${needEng ? ' English daily — target IELTS 6.5.' : ''}`, `Profil fanlar: ${subj}.${needEng ? ' Ingliz tili har kuni — maqsad IELTS 6.5.' : ''}`) },
+    { p: .7, h: T3('Экзамены', 'Exams', 'Imtihonlar'),
+      d: T3(`Сдача: ${examList}. Оставь время на пересдачу.`, `Take: ${examList}. Leave time for a retake.`, `Topshirish: ${examList}. Qayta topshirishga vaqt qoldiring.`) },
+    { p: .85, h: T3('Документы', 'Documents', 'Hujjatlar'),
+      d: T3(`${foreign ? 'Мотивационное письмо, 2 рекомендации, перевод и апостиль аттестата' : 'Аттестат, паспорт, фото, регистрация на my.gov.uz'}${port ? ', портфолио' : ''}.`,
+        `${foreign ? 'Motivation letter, 2 recommendations, translated & apostilled diploma' : 'Diploma, passport, photos, registration on my.gov.uz'}${port ? ', portfolio' : ''}.`,
+        `${foreign ? 'Motivatsion xat, 2 ta tavsiyanoma, attestat tarjimasi va apostili' : 'Attestat, pasport, rasm, my.gov.uz da roʻyxatdan oʻtish'}${port ? ', portfolio' : ''}.`) },
+    { p: 1, h: T3('Подача и гранты', 'Applications & grants', 'Hujjat topshirish va grantlar'),
+      d: T3('Подай в 5–8 вузов: 2 мечты, 3 реальных, 2 запасных. Параллельно — заявки на гранты.', 'Apply to 5–8 universities: 2 dream, 3 match, 2 safety. Apply for grants in parallel.', '5–8 ta oliygohga topshiring: 2 ta orzu, 3 ta real, 2 ta zaxira. Parallel ravishda grantlarga ariza bering.') },
   ];
   let prev = 0;
-  const unit = ru ? 'мес.' : 'mo';
+  const unit = T3('мес.', 'mo', 'oy');
   const tl = stages.map(st => {
     const from = Math.max(1, Math.round(prev * M) + (prev ? 1 : 0)), to = Math.max(from, Math.round(st.p * M));
     prev = st.p;
@@ -352,10 +366,12 @@ function renderPrep(s) {
   // неделя
   const H = s.hours, per = Math.max(1, Math.round(H / 6 * 10) / 10);
   const [s1, s2] = subjectsOf(s.field).map(tx);
-  const engL = needEng ? (ru ? 'Английский' : 'English') : (ru ? 'Практика задач' : 'Practice problems');
-  const days = ru ? ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'] : ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-  const plan = [[s1, engL], [engL, s2], [s1, engL], [s2, engL], [s1, ru ? 'Документы' : 'Documents'], [ru ? 'Пробный тест' : 'Mock test', ru ? 'Разбор ошибок' : 'Review'], [ru ? 'Отдых' : 'Rest']];
-  const week = plan.map((p, i) => `<div class="day ${i === 6 ? 'rest' : ''}"><b>${days[i]}${i < 6 ? ` · ${per}${ru ? 'ч' : 'h'}` : ''}</b>${p.map(x => `<span>${x}</span>`).join('')}</div>`).join('');
+  const engL = needEng ? T3('Английский', 'English', 'Ingliz tili') : T3('Практика задач', 'Practice problems', 'Masalalar amaliyoti');
+  const days = { ru: ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'], en: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'], uz: ['DU', 'SE', 'CHO', 'PA', 'JU', 'SHA', 'YA'] }[LANG] || [];
+  const plan = [[s1, engL], [engL, s2], [s1, engL], [s2, engL], [s1, T3('Документы', 'Documents', 'Hujjatlar')],
+    [T3('Пробный тест', 'Mock test', 'Sinov testi'), T3('Разбор ошибок', 'Review', 'Xatolar tahlili')], [T3('Отдых', 'Rest', 'Dam olish')]];
+  const hr = T3('ч', 'h', 's');
+  const week = plan.map((p, i) => `<div class="day ${i === 6 ? 'rest' : ''}"><b>${days[i]}${i < 6 ? ` · ${per}${hr}` : ''}</b>${p.map(x => `<span>${x}</span>`).join('')}</div>`).join('');
 
   const WEAK = {
     eng: L('Английский: 30 минут в день, подкасты BBC Learning English, пробные тесты IELTS раз в 2 недели.', 'English: 30 min a day, BBC Learning English podcasts, mock IELTS every 2 weeks.'),
@@ -366,16 +382,16 @@ function renderPrep(s) {
     choice: L('Выбор: пройди тест «Университет» в Noventis и поговори с 2–3 студентами выбранной сферы.', 'Choice: take Noventis’s “University” test and talk to 2–3 students in that field.'),
   };
   const grants = [...new Set([...s.targets.filter(x => x !== 'uzp'), 'all'])].flatMap(k => (GRANTS[k] || []).map(tx));
-  const res = ['Khan Academy — ' + (ru ? 'математика, наука' : 'math, science'), 'British Council / IELTS Liz — IELTS',
-               ...(s.targets.includes('us') ? ['College Board Bluebook — SAT'] : []), ...(s.targets.includes('uz') ? ['uzbmb.uz — ' + (ru ? 'официальные тесты' : 'official tests')] : []),
-               ...(s.targets.includes('kr') ? ['TOPIK Guide, Study in Korea'] : []), 'Coursera / edX — ' + (ru ? 'курсы по направлению' : 'field courses')];
+  const res = ['Khan Academy — ' + T3('математика, наука', 'math, science', 'matematika, fanlar'), 'British Council / IELTS Liz — IELTS',
+               ...(s.targets.includes('us') ? ['College Board Bluebook — SAT'] : []), ...(s.targets.includes('uz') ? ['uzbmb.uz — ' + T3('официальные тесты', 'official tests', 'rasmiy testlar')] : []),
+               ...(s.targets.includes('kr') ? ['TOPIK Guide, Study in Korea'] : []), 'Coursera / edX — ' + T3('курсы по направлению', 'field courses', 'yoʻnalish boʻyicha kurslar')];
 
   return head('res_prep_title', s)
     + alerts.map(a => `<div class="alert">${a}</div>`).join('')
-    + `<article class="card field-card"><div class="top"><div class="glyph">${escapeHtml(F.glyph)}</div><div><div class="rank">${ru ? 'Направление' : 'Field'}</div><h3>${tx(F.name)}</h3></div></div>
+    + `<article class="card field-card"><div class="top"><div class="glyph">${escapeHtml(F.glyph)}</div><div><div class="rank">${T3('Направление', 'Field', 'Yoʻnalish')}</div><h3>${tx(F.name)}</h3></div></div>
         <h4 class="rank" style="margin:8px 0 14px">${t('exams_needed')}</h4><ul class="list">${exams.join('')}</ul></article>`
     + `<article class="card"><h4 class="rank" style="margin:0 0 24px">${t('roadmap')}</h4><div class="timeline">${tl}</div></article>`
-    + `<article class="card"><h4 class="rank" style="margin:0 0 18px">${t('week_plan')} · ${H}${ru ? ' ч/нед' : ' h/wk'}</h4><div class="week">${week}</div></article>`
+    + `<article class="card"><h4 class="rank" style="margin:0 0 18px">${t('week_plan')} · ${H}${T3(' ч/нед', ' h/wk', ' soat/hafta')}</h4><div class="week">${week}</div></article>`
     + `<article class="card"><div class="cols">
         ${s.weak.length ? `<div><h4>${t('weak_tips')}</h4>${li(s.weak.map(w => tx(WEAK[w])))}</div>` : ''}
         <div><h4>${t('grants')}</h4>${li(grants)}</div>
@@ -390,7 +406,7 @@ function renderResult() {
   const others = Object.keys(CATEGORIES).filter(k => k !== current.category)
     .map(k => `<a class="btn btn-ghost" href="/test?cat=${k}">${tx(CATEGORIES[k].title)} →</a>`).join('');
   const date = (current.created_at ? new Date(current.created_at.replace(' ', 'T') + 'Z') : new Date())
-    .toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    .toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
   const who = current.student ? current.student.name : ME.name;
   app.innerHTML = `<div class="print-head"><b>Noventis<span>.</span></b><span>${t('report_for')} ${escapeHtml(who)} · ${t('report_date')}: ${date}</span></div>`
     + (current.student ? `<div class="alert">${t('fm_viewing')}: <b>${escapeHtml(who)}</b> · <a href="/family?student=${current.student.id}" style="color:var(--gold)">${t('fm_all_res')}</a></div>` : '')

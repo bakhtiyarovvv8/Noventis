@@ -2,7 +2,7 @@
 const app = document.getElementById('app');
 let FAM = null, tab = 'student';
 
-const when = s => new Date(s.replace(' ', 'T') + 'Z').toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const when = s => new Date(s.replace(' ', 'T') + 'Z').toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
 const catName = c => c === 'english' ? t('en_title') : tx(CATEGORIES[c].title);
 
 // одна строка о результате: топ-направление, план или уровень английского

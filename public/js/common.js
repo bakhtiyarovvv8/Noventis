@@ -244,7 +244,14 @@ const UI = {
 };
 
 let LANG = (() => { try { return localStorage.getItem('kj_lang') || 'ru'; } catch { return 'ru'; } })();
-const tx = v => (v && typeof v === 'object' ? (v[LANG] ?? v.ru) : v ?? '');
+// Узбекский берём из самой строки (uz) или из словаря uz.js по русскому тексту; нет перевода — показываем русский
+const tx = v => {
+  if (!v || typeof v !== 'object') return v ?? '';
+  if (LANG === 'uz') return v.uz || (typeof UZ !== 'undefined' && UZ[v.ru]) || v.ru;
+  return v[LANG] ?? v.ru;
+};
+// Формат дат и чисел для текущего языка
+const locale = () => ({ ru: 'ru-RU', en: 'en-GB', uz: 'uz-Latn-UZ' })[LANG] || 'ru-RU';
 const t = key => tx(UI[key]) || key;
 
 function applyI18n(root = document) {
@@ -310,11 +317,15 @@ function toast(msg) {
 
 // Название страны по коду ISO (UZ → Узбекистан) или подпись региона из REGIONS (us → США / Канада)
 function placeName(code) {
+  if (LANG === 'uz' && typeof UZ_REGIONS !== 'undefined' && UZ_REGIONS[code]) return UZ_REGIONS[code];
   if (/^[A-Z]{2}$/.test(code)) {
     try { return new Intl.DisplayNames([LANG], { type: 'region' }).of(code); } catch { return code; }
   }
   return typeof REGIONS !== 'undefined' && REGIONS[code] ? tx(REGIONS[code]) : code;
 }
+
+// Название вуза для показа: вузы, записанные по-русски, на узбекском берём из словаря
+const nm = n => (LANG === 'uz' && typeof UZ !== 'undefined' && UZ[n]) || n;
 
 // ---------- избранные вузы ----------
 // Ключ вуза — название + место (код страны или региона). Список грузится один раз на страницу.

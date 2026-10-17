@@ -19,7 +19,7 @@
         <a href="/catalog" data-i18n="nav_unis"></a>
       </nav>
       <div class="nav-right">
-        <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+        <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="uz">UZ</button><button data-lang="en">EN</button></div>
         <div class="nav-auth"></div>
       </div>
     </div>
@@ -42,13 +42,14 @@
 
   <script src="/vendor/gsap.min.js"></script>
   <script src="/js/data.js"></script>
+  <script src="/js/uz.js"></script>
   <script src="/js/common.js"></script>
   <script src="/js/deadlines-data.js"></script>
   <script>
     const $list = document.getElementById('list');
     let FOLLOWS = new Set(), type = new URLSearchParams(location.search).get('type') || 'all';
 
-    const dateStr = d => d.toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dateStr = d => d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
 
     function render() {
       document.getElementById('types').innerHTML = ['all', 'grant', 'apply', 'exam', 'mine']
@@ -61,7 +62,7 @@
       let month = '';
       $list.innerHTML = list.map(dl => {
         const d = nextDate(dl), left = daysLeft(dl), on = FOLLOWS.has(dl.id);
-        const m = d.toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { month: 'long', year: 'numeric' });
+        const m = d.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
         const head = m !== month ? `<h4 class="rank dl-month">${m}</h4>` : '';
         month = m;
         return head + `<div class="uni dl ${left <= 30 ? 'soon' : ''}">

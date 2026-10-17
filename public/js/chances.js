@@ -74,8 +74,8 @@ function render() {
 
   const item = x => {
     const [name, cc, reqI, reqS, reqG] = x.u;
-    const req = [reqI ? 'IELTS ' + reqI.toFixed(1) : '', reqS ? 'SAT ' + reqS : '', (LANG === 'ru' ? 'балл ' : 'GPA ') + reqG.toFixed(1)].filter(Boolean).join(' · ');
-    return `<div class="uni"><div class="meta"><b>${escapeHtml(name)}</b><span>${escapeHtml(placeName(cc))} · ${req}</span>
+    const req = [reqI ? 'IELTS ' + reqI.toFixed(1) : '', reqS ? 'SAT ' + reqS : '', tx({ ru: 'балл ', en: 'GPA ', uz: 'baho ' }) + reqG.toFixed(1)].filter(Boolean).join(' · ');
+    return `<div class="uni"><div class="meta"><b>${escapeHtml(nm(name))}</b><span>${escapeHtml(placeName(cc))} · ${req}</span>
       ${x.notes.length ? `<div class="ch-notes">${x.notes.map(n => `<em>${n}</em>`).join('')}</div>` : ''}</div>${heart(name, cc)}</div>`;
   };
   $('out').innerHTML = [['safe', 'ch_safe'], ['match', 'ch_match'], ['reach', 'ch_reach']].map(([k, key]) => `

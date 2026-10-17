@@ -15,23 +15,28 @@ const ctx = { L: (ru, en) => ({ ru, en }) };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname, 'public', 'js', 'deadlines-data.js'), 'utf8')
   + '\n;this.DEADLINES = DEADLINES; this.nextDate = nextDate;', ctx);
-const { DEADLINES, nextDate } = ctx;
-const tr = (v, lang) => (v && typeof v === 'object' ? v[lang] || v.ru : v);
+vm.runInContext(fs.readFileSync(path.join(__dirname, 'public', 'js', 'uz.js'), 'utf8') + '\n;this.UZ = UZ;', ctx);
+const { DEADLINES, nextDate, UZ } = ctx;
+const tr = (v, lang) => {
+  if (!v || typeof v !== 'object') return v;
+  return lang === 'uz' ? v.uz || UZ[v.ru] || v.ru : v[lang] || v.ru;
+};
 const daysLeft = dl => Math.round((nextDate(dl) - new Date(new Date().toDateString())) / 864e5);
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 const TEXT = {
-  hello: { ru: 'Привет! Я бот Noventis. Подключи меня в кабинете на сайте — и я буду напоминать о дедлайнах грантов, экзаменов и подачи в вузы.', en: 'Hi! I’m the Noventis bot. Connect me in your dashboard and I’ll remind you about grant, exam and application deadlines.' },
-  linked: { ru: 'Готово! Аккаунт подключён. Напомню о дедлайнах за 30, 7 и 1 день. Команды: /deadlines — мои дедлайны, /stop — отключить.', en: 'Done! Your account is connected. I’ll remind you 30, 7 and 1 day before deadlines. Commands: /deadlines, /stop.' },
-  bad_code: { ru: 'Ссылка устарела. Открой кабинет на сайте и нажми «Подключить Telegram» ещё раз.', en: 'This link has expired. Open your dashboard and tap “Connect Telegram” again.' },
-  stopped: { ru: 'Бот отключён. Подключить снова можно в кабинете.', en: 'The bot is disconnected. You can reconnect in your dashboard.' },
-  none: { ru: 'Ты пока не следишь ни за одним дедлайном. Отметь нужные:', en: 'You’re not following any deadlines yet. Pick some here:' },
-  mine: { ru: 'Твои ближайшие дедлайны:', en: 'Your upcoming deadlines:' },
-  remind: { ru: '⏰ Напоминание о дедлайнах:', en: '⏰ Deadline reminder:' },
-  days: { ru: 'дн.', en: 'days' }, today: { ru: 'сегодня!', en: 'today!' },
-  week: { ru: '📅 Новая неделя подготовки. Открой план и отметь задачи:', en: '📅 A new study week. Open your plan and tick off tasks:' },
-  help: { ru: 'Команды: /deadlines — мои дедлайны, /stop — отключить напоминания.', en: 'Commands: /deadlines — my deadlines, /stop — turn off reminders.' },
+  hello: { ru: 'Привет! Я бот Noventis. Подключи меня в кабинете на сайте — и я буду напоминать о дедлайнах грантов, экзаменов и подачи в вузы.', en: 'Hi! I’m the Noventis bot. Connect me in your dashboard and I’ll remind you about grant, exam and application deadlines.', uz: 'Salom! Men Noventis botiman. Meni saytdagi kabinetda ulang — grantlar, imtihonlar va hujjat topshirish muddatlari haqida eslatib turaman.' },
+  linked: { ru: 'Готово! Аккаунт подключён. Напомню о дедлайнах за 30, 7 и 1 день. Команды: /deadlines — мои дедлайны, /stop — отключить.', en: 'Done! Your account is connected. I’ll remind you 30, 7 and 1 day before deadlines. Commands: /deadlines, /stop.', uz: 'Tayyor! Akkaunt ulandi. Muddatlar haqida 30, 7 va 1 kun oldin eslataman. Buyruqlar: /deadlines — muddatlarim, /stop — oʻchirish.' },
+  bad_code: { ru: 'Ссылка устарела. Открой кабинет на сайте и нажми «Подключить Telegram» ещё раз.', en: 'This link has expired. Open your dashboard and tap “Connect Telegram” again.', uz: 'Havola eskirgan. Saytdagi kabinetni oching va «Telegramni ulash»ni yana bosing.' },
+  stopped: { ru: 'Бот отключён. Подключить снова можно в кабинете.', en: 'The bot is disconnected. You can reconnect in your dashboard.', uz: 'Bot oʻchirildi. Kabinetda qayta ulash mumkin.' },
+  none: { ru: 'Ты пока не следишь ни за одним дедлайном. Отметь нужные:', en: 'You’re not following any deadlines yet. Pick some here:', uz: 'Hozircha birorta muddatni kuzatmayapsiz. Keraklilarini belgilang:' },
+  mine: { ru: 'Твои ближайшие дедлайны:', en: 'Your upcoming deadlines:', uz: 'Yaqin muddatlaringiz:' },
+  remind: { ru: '⏰ Напоминание о дедлайнах:', en: '⏰ Deadline reminder:', uz: '⏰ Muddatlar haqida eslatma:' },
+  days: { ru: 'дн.', en: 'days', uz: 'kun' }, today: { ru: 'сегодня!', en: 'today!', uz: 'bugun!' },
+  week: { ru: '📅 Новая неделя подготовки. Открой план и отметь задачи:', en: '📅 A new study week. Open your plan and tick off tasks:', uz: '📅 Yangi tayyorgarlik haftasi. Rejani oching va vazifalarni belgilang:' },
+  help: { ru: 'Команды: /deadlines — мои дедлайны, /stop — отключить напоминания.', en: 'Commands: /deadlines — my deadlines, /stop — turn off reminders.', uz: 'Buyruqlar: /deadlines — muddatlarim, /stop — eslatmalarni oʻchirish.' },
 };
+const langOf = code => (['ru', 'en', 'uz'].includes(code) ? code : 'ru');
 
 async function send(chatId, text) {
   if (!enabled()) return false;
@@ -57,7 +62,7 @@ async function handleUpdate(u, db) {
   const chat = String(msg.chat.id);
   const [cmd, arg] = msg.text.trim().split(/\s+/);
   const link = await db.one('SELECT user_id, lang FROM tg_links WHERE chat_id = ?', chat);
-  const lang = link ? link.lang : (String(msg.from && msg.from.language_code).startsWith('ru') ? 'ru' : 'en');
+  const lang = langOf(link ? link.lang : String(msg.from && msg.from.language_code).slice(0, 2));
 
   if (cmd === '/start') {
     if (!arg) return send(chat, TEXT.hello[lang] + '\n' + SITE + '/profile');

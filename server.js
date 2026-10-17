@@ -380,7 +380,8 @@ async function api(req, res, url) {
   }
   if (route === 'POST /api/tg/link') {
     if (!bot.enabled() || !bot.botName()) return json(res, 400, { error: 'tg_off' });
-    const lang = str((await readBody(req)).lang) === 'en' ? 'en' : 'ru';
+    const asked = str((await readBody(req)).lang);
+    const lang = ['en', 'uz'].includes(asked) ? asked : 'ru';
     const code = crypto.randomBytes(9).toString('base64url').replace(/[-_]/g, 'x');
     await run('DELETE FROM tg_codes WHERE user_id = ?', user.id);
     await run('INSERT INTO tg_codes (code, user_id, lang, expires) VALUES (?, ?, ?, ?)', code, user.id, lang, Date.now() + 15 * 60e3);

@@ -33,7 +33,7 @@ function renderList() {
 
 function detail(id) {
   const F = FIELDS[id], C = CAREERS[id];
-  const unis = F.world.slice(0, 6).map(([n, r]) => `${escapeHtml(n)}<span class="tag">${tx(REGIONS[r])}</span>${heart(n, r)}`);
+  const unis = F.world.slice(0, 6).map(([n, r]) => `${escapeHtml(nm(n))}<span class="tag">${tx(REGIONS[r])}</span>${heart(n, r)}`);
   app.innerHTML = `
     <a class="note" href="/careers" data-go="" style="color:var(--gold)">${t('cr_back')}</a>
     <div class="page-head" style="margin-top:16px"><span class="kicker">${tx(AREAS[Object.keys(AREAS).find(a => AREAS[a].f.includes(id))].t)}</span>
@@ -54,7 +54,7 @@ function detail(id) {
     <article class="card"><div class="cols">
       <div><h4>${t('where_strong')}</h4>${li(F.hubs.map(tx))}</div>
       <div><h4>${t('cr_unis')}</h4>${li(unis)}</div>
-      <div><h4>${t('unis_uz')}</h4>${li(F.uz.map(escapeHtml))}</div>
+      <div><h4>${t('unis_uz')}</h4>${li(F.uz.map(n => escapeHtml(nm(n))))}</div>
     </div></article>
     <div class="result-actions">
       <a class="btn btn-gold" href="/test?cat=university">${tx(CATEGORIES.university.title)} →</a>
@@ -81,7 +81,7 @@ function compare(a, b) {
       ${row(t('cr_pros'), `<ul class="list pros">${CA.pros.map(x => `<li>${tx(x)}</li>`).join('')}</ul>`, `<ul class="list pros">${CB.pros.map(x => `<li>${tx(x)}</li>`).join('')}</ul>`)}
       ${row(t('cr_cons'), `<ul class="list cons">${CA.cons.map(x => `<li>${tx(x)}</li>`).join('')}</ul>`, `<ul class="list cons">${CB.cons.map(x => `<li>${tx(x)}</li>`).join('')}</ul>`)}
       ${row(t('where_strong'), li(A.hubs.slice(0, 3).map(tx)), li(B.hubs.slice(0, 3).map(tx)))}
-      ${row(t('cr_unis'), li(A.world.slice(0, 4).map(([n]) => escapeHtml(n))), li(B.world.slice(0, 4).map(([n]) => escapeHtml(n))))}
+      ${row(t('cr_unis'), li(A.world.slice(0, 4).map(([n]) => escapeHtml(nm(n)))), li(B.world.slice(0, 4).map(([n]) => escapeHtml(nm(n)))))}
       ${row('', `<a class="btn btn-ghost" href="/careers?f=${a}" data-go="?f=${a}">${t('cr_more')}</a>`, `<a class="btn btn-ghost" href="/careers?f=${b}" data-go="?f=${b}">${t('cr_more')}</a>`)}
     </article>
     <p class="note">${t('salary_note')}</p>`;

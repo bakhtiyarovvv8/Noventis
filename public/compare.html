@@ -19,7 +19,7 @@
         <a href="/catalog" data-i18n="nav_unis"></a>
       </nav>
       <div class="nav-right">
-        <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+        <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="uz">UZ</button><button data-lang="en">EN</button></div>
         <div class="nav-auth"></div>
       </div>
     </div>
@@ -29,6 +29,7 @@
 
   <script src="/vendor/gsap.min.js"></script>
   <script src="/js/data.js"></script>
+  <script src="/js/uz.js"></script>
   <script src="/js/common.js"></script>
   <script>
     const app = document.getElementById('app');
@@ -39,7 +40,7 @@
     const when = r => {
       const d = x => new Date(x.created_at.replace(' ', 'T') + 'Z');
       const sameDay = A && B && d(A).toDateString() === d(B).toDateString();
-      return d(r).toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-GB', sameDay ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric' });
+      return d(r).toLocaleString(locale(), sameDay ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric' });
     };
     const pctMap = r => Object.fromEntries((r.summary.fields || []).map(f => [f.id, f.pct]));
 

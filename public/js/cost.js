@@ -3,14 +3,14 @@ const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 let RATE = { rate: null, date: null };
 
-const usd = v => '$' + Math.round(v).toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-US');
+const usd = v => '$' + Math.round(v).toLocaleString(locale());
 // суммы в сумах округляем до тысяч; больше миллиона — «млн»
 const uzs = v => {
   if (!RATE.rate) return '';
   const s = v * RATE.rate;
   return s >= 1e6
-    ? (s / 1e6).toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-US', { maximumFractionDigits: 1 }) + (LANG === 'ru' ? ' млн ' : 'M ') + t('sum')
-    : Math.round(s / 1000).toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-US') + (LANG === 'ru' ? ' тыс. ' : 'k ') + t('sum');
+    ? (s / 1e6).toLocaleString(locale(), { maximumFractionDigits: 1 }) + tx({ ru: ' млн ', en: 'M ', uz: ' mln ' }) + t('sum')
+    : Math.round(s / 1000).toLocaleString(locale()) + tx({ ru: ' тыс. ', en: 'k ', uz: ' ming ' }) + t('sum');
 };
 const range = (a, b) => a === b ? usd(a) : `${usd(a)} – ${usd(b)}`;
 const rangeUzs = (a, b) => RATE.rate ? (a === b ? uzs(a) : `${uzs(a)} – ${uzs(b)}`) : '';
@@ -57,7 +57,7 @@ function render() {
         ${cell(t('co_year'), range(yMin, yMax), rangeUzs(yMin, yMax), true)}
         ${cell(`${t('co_total')} · ${years}`, range(yMin * years, yMax * years), rangeUzs(yMin * years, yMax * years), true)}
       </div>
-      ${RATE.rate ? `<p class="note">${t('co_rate')}: 1 $ = ${RATE.rate.toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-US')} ${t('sum')} · ${RATE.date}</p>` : ''}
+      ${RATE.rate ? `<p class="note">${t('co_rate')}: 1 $ = ${RATE.rate.toLocaleString(locale())} ${t('sum')} · ${RATE.date}</p>` : ''}
     </article>
     <article class="card">
       <h4 class="rank" style="margin:0 0 16px">${t('co_grants')}</h4>
