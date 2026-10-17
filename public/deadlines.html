@@ -31,8 +31,8 @@
       <h1 data-i18n="dl_title"></h1>
       <p data-i18n="dl_lead"></p>
     </div>
-    <div class="chips-pick" id="types" style="margin-bottom:18px"></div>
     <div id="list"></div>
+    <article class="card" style="margin-top:18px" id="addCard"></article>
     <article class="card" style="margin-top:18px">
       <button class="btn btn-gold btn-wrap" id="icsAll" data-i18n="dl_ics_all"></button>
       <p class="note" data-i18n="dl_ics_hint"></p>
@@ -46,60 +46,89 @@
   <script src="/js/common.js"></script>
   <script src="/js/deadlines-data.js"></script>
   <script>
-    const $list = document.getElementById('list');
-    let FOLLOWS = new Set(), type = new URLSearchParams(location.search).get('type') || 'all';
+    // Календарь: только события, которые пользователь добавил сам — из плана по неделям или вручную
+    const $list = document.getElementById('list'), $add = document.getElementById('addCard');
+    const T3 = (ru, en, uz) => tx({ ru, en, uz });
+    let EVENTS = [];
 
-    const dateStr = d => d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
+    const day = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+    const left = e => Math.round((day(e.date) - new Date(new Date().toDateString())) / 864e5);
+    const KIND = { deadline: L('Подача', 'Application'), exam: L('Экзамен', 'Exam'), grant: L('Грант', 'Grant'), task: L('Задача', 'Task') };
 
     function render() {
-      document.getElementById('types').innerHTML = ['all', 'grant', 'apply', 'exam', 'mine']
-        .map(k => `<button type="button" class="chip-btn ${type === k ? 'on' : ''}" data-type="${k}">${t('dl_' + k)}</button>`).join('');
-      const list = DEADLINES
-        .filter(dl => type === 'all' || (type === 'mine' ? FOLLOWS.has(dl.id) : dl.type === type))
-        .sort((a, b) => nextDate(a) - nextDate(b));
-      if (!list.length) { $list.innerHTML = `<div class="empty">${t(type === 'mine' ? 'dl_none_mine' : 'cat_empty')}</div>`; return; }
-      // группируем по месяцам ближайшей даты
-      let month = '';
-      $list.innerHTML = list.map(dl => {
-        const d = nextDate(dl), left = daysLeft(dl), on = FOLLOWS.has(dl.id);
-        const m = d.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
-        const head = m !== month ? `<h4 class="rank dl-month">${m}</h4>` : '';
-        month = m;
-        return head + `<div class="uni dl ${left <= 30 ? 'soon' : ''}">
-          <div class="dl-left"><b>${left === 0 ? t('dl_today') : left}</b>${left === 0 ? '' : `<span>${t('dl_days')}</span>`}</div>
-          <div class="meta"><b>${tx(dl.n)}</b><span>${dateStr(d)} · ${escapeHtml(placeName(dl.cc))} · ${t('dl_' + dl.type)}</span>
-            <span class="dl-note">${tx(dl.note)} · <a href="${dl.url}" target="_blank" rel="noopener noreferrer">${new URL(dl.url).hostname} ↗</a></span></div>
-          <button class="btn btn-ghost dl-ics" data-id="${dl.id}" type="button">${t('dl_ics')}</button>
-          <button class="btn ${on ? 'btn-gold' : 'btn-ghost'} dl-follow" data-id="${dl.id}" type="button">${t(on ? 'dl_following' : 'dl_follow')}</button>
-        </div>`;
-      }).join('');
+      if (!EVENTS.length) {
+        $list.innerHTML = `<div class="empty">${t('dl_none_mine')}<div class="more-row"><a class="btn btn-gold" href="/plan">${t('pl_open')} →</a></div></div>`;
+      } else {
+        let month = '';
+        $list.innerHTML = EVENTS.map(e => {
+          const d = day(e.date), n = left(e);
+          const m = d.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
+          const head = m !== month ? `<h4 class="rank dl-month">${m}</h4>` : '';
+          month = m;
+          return head + `<div class="uni dl ${n >= 0 && n <= 30 ? 'soon' : ''} ${n < 0 ? 'past' : ''}">
+            <div class="dl-left"><b>${n === 0 ? t('dl_today') : Math.abs(n)}</b>${n === 0 ? '' : `<span>${n < 0 ? T3('дн. назад', 'days ago', 'kun oldin') : t('dl_days')}</span>`}</div>
+            <div class="meta"><b>${escapeHtml(e.title)}</b><span>${d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' })} · ${tx(KIND[e.kind] || KIND.task)}</span>
+              ${e.note || e.url ? `<span class="dl-note">${escapeHtml(e.note)}${e.url ? `${e.note ? ' · ' : ''}<a href="${escapeHtml(e.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(new URL(e.url).hostname)} ↗</a>` : ''}</span>` : ''}</div>
+            <button class="btn btn-ghost dl-ics" data-id="${e.id}" type="button">${t('dl_ics')}</button>
+            <button class="ed-del dl-del" data-id="${e.id}" type="button" aria-label="${t('delete')}" title="${t('delete')}">×</button>
+          </div>`;
+        }).join('');
+      }
+      document.getElementById('icsAll').disabled = !EVENTS.length;
+      // своё событие: вручную или из списка известных сроков
+      $add.innerHTML = `<h4 class="rank" style="margin:0 0 14px">${T3('Добавить своё событие', 'Add your own event', 'Oʻz voqeangizni qoʻshish')}</h4>
+        <div class="calc-form">
+          <label class="calc-field"><span>${T3('Из списка сроков (необязательно)', 'From known deadlines (optional)', 'Maʼlum muddatlardan (ixtiyoriy)')}</span>
+            <select class="select" id="fromList"><option value="">—</option>${DEADLINES.slice().sort((a, b) => nextDate(a) - nextDate(b)).map(dl => `<option value="${dl.id}">${escapeHtml(tx(dl.n))} · ${nextDate(dl).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })}</option>`).join('')}</select></label>
+          <label class="calc-field"><span>${T3('Название', 'Title', 'Nomi')}</span><input class="input" id="evTitle" maxlength="200"></label>
+          <label class="calc-field"><span>${T3('Дата', 'Date', 'Sana')}</span><input class="input" id="evDate" type="date"></label>
+        </div>
+        <div class="more-row" style="justify-content:flex-start"><button class="btn btn-gold" id="evAdd">+ ${T3('Добавить', 'Add', 'Qoʻshish')}</button></div>`;
     }
 
-    document.addEventListener('click', async e => {
-      const ty = e.target.closest('[data-type]');
-      if (ty) { type = ty.dataset.type; render(); return; }
-      const ics = e.target.closest('.dl-ics');
-      if (ics) { downloadIcs([DEADLINES.find(x => x.id === ics.dataset.id)], ics.dataset.id + '.ics'); toast(t('dl_ics_hint')); return; }
-      const f = e.target.closest('.dl-follow');
-      if (f) {
-        if (!ME) { toast(t('dl_login')); setTimeout(() => location.href = '/auth?next=/deadlines', 900); return; }
-        const id = f.dataset.id, on = FOLLOWS.has(id);
-        const r = await api('/api/deadlines', { method: on ? 'DELETE' : 'POST', body: { id } });
-        if (!r.ok) return toast(t('err_server'));
-        on ? FOLLOWS.delete(id) : FOLLOWS.add(id);
-        render();
+    async function load() {
+      const r = await api('/api/events');
+      EVENTS = r.ok ? r.data.events : [];
+      render();
+    }
+
+    let picked = null;   // срок из списка: заполняет название, дату и ссылку
+    document.addEventListener('change', e => {
+      if (e.target.id !== 'fromList') return;
+      const dl = DEADLINES.find(x => x.id === e.target.value);
+      picked = dl || null;
+      if (dl) {
+        const d = nextDate(dl);
+        document.getElementById('evTitle').value = tx(dl.n);
+        document.getElementById('evDate').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       }
     });
-    document.getElementById('icsAll').onclick = () => {
-      // вошедшим — только отмеченные, гостям и без отметок — все
-      const mine = DEADLINES.filter(dl => FOLLOWS.has(dl.id));
-      downloadIcs(mine.length ? mine : DEADLINES);
-      toast(t('dl_ics_hint'));
-    };
+    document.addEventListener('click', async e => {
+      const ics = e.target.closest('.dl-ics');
+      if (ics) { downloadIcs([EVENTS.find(x => String(x.id) === ics.dataset.id)], 'noventis-' + ics.dataset.id + '.ics'); toast(t('dl_ics_hint')); return; }
+      const del = e.target.closest('.dl-del');
+      if (del) {
+        const v = await ask(T3('Удалить событие из календаря?', 'Remove this event from the calendar?', 'Voqeani taqvimdan oʻchirasizmi?'), '', [{ v: 'yes', label: t('delete'), gold: true }, { v: null, label: t('cancel') }]);
+        if (!v) return;
+        await api('/api/events/' + del.dataset.id, { method: 'DELETE' });
+        return load();
+      }
+      if (e.target.closest('#evAdd')) {
+        const title = document.getElementById('evTitle').value.trim(), date = document.getElementById('evDate').value;
+        if (!title || !date) return toast(T3('Заполни название и дату', 'Fill in the title and date', 'Nomi va sanani toʻldiring'));
+        const item = { title, date, kind: picked ? picked.type === 'exam' ? 'exam' : picked.type === 'grant' ? 'grant' : 'deadline' : 'task', note: picked ? tx(picked.note) : '', url: picked ? picked.url : '' };
+        const r = await api('/api/events', { method: 'POST', body: { items: [item] } });
+        if (!r.ok) return toast(t(r.data.error === 'too_many' ? 'err_too_many' : 'err_server'));
+        picked = null;
+        toast(T3('Добавлено в календарь', 'Added to calendar', 'Taqvimga qoʻshildi'));
+        return load();
+      }
+    });
+    document.getElementById('icsAll').onclick = () => { downloadIcs(EVENTS); toast(t('dl_ics_hint')); };
     document.addEventListener('langchange', render);
     document.addEventListener('DOMContentLoaded', async () => {
-      if (await loadMe()) { const r = await api('/api/deadlines'); if (r.ok) FOLLOWS = new Set(r.data.follows); }
-      render();
+      if (!await loadMe()) { location.href = '/auth?next=/deadlines'; return; }
+      await load();
       gsap.from('.page-head > *', { y: 30, opacity: 0, stagger: .06, duration: 1, ease: 'expo.out' });
     });
   </script>

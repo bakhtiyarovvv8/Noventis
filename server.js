@@ -64,18 +64,22 @@ const ready = db.batch([
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE (user_id, name, place)
   )`,
-  // дедлайны, за которыми следит пользователь (id из public/js/deadlines-data.js)
-  `CREATE TABLE IF NOT EXISTS deadline_follows (
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    did TEXT NOT NULL,
-    PRIMARY KEY (user_id, did)
+  // личный план по неделям: один на пользователя, data — JSON (вуз, направление, дедлайн, недели с задачами)
+  `CREATE TABLE IF NOT EXISTS plans (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    data TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
-  // галочки личного плана по неделям: checks — JSON-массив ключей «неделя:задача»
-  `CREATE TABLE IF NOT EXISTS plan_progress (
+  // календарь: только то, что пользователь добавил сам (из плана или вручную)
+  `CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    result_id INTEGER NOT NULL REFERENCES results(id) ON DELETE CASCADE,
-    checks TEXT NOT NULL DEFAULT '[]',
-    PRIMARY KEY (user_id, result_id)
+    title TEXT NOT NULL,
+    date TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    kind TEXT NOT NULL DEFAULT 'task',
+    url TEXT NOT NULL DEFAULT '',
+    UNIQUE (user_id, title, date)
   )`,
   // сохранённые расчёты калькуляторов: kind — chances | cost, data — JSON с вводом и итогом
   `CREATE TABLE IF NOT EXISTS calcs (
@@ -312,35 +316,49 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true });
   }
 
-  if (route === 'GET /api/deadlines') {
-    const rows = await all('SELECT did FROM deadline_follows WHERE user_id = ?', user.id);
-    return json(res, 200, { follows: rows.map(r => r.did) });
+  // ---------- план по неделям ----------
+  if (route === 'GET /api/plan') {
+    const row = await one('SELECT data, updated_at FROM plans WHERE user_id = ?', user.id);
+    return json(res, 200, { plan: row ? JSON.parse(row.data) : null, updated_at: row ? row.updated_at : null });
   }
-
-  if (route === 'POST /api/deadlines' || route === 'DELETE /api/deadlines') {
-    const did = str((await readBody(req)).id);
-    if (!/^[a-z0-9_]{1,30}$/.test(did)) return json(res, 400, { error: 'bad_json' });
-    if (req.method === 'DELETE') await run('DELETE FROM deadline_follows WHERE user_id = ? AND did = ?', user.id, did);
-    else {
-      const n = await one('SELECT COUNT(*) AS c FROM deadline_follows WHERE user_id = ?', user.id);
-      if (Number(n.c) >= 100) return json(res, 400, { error: 'too_many' });
-      await run('INSERT OR IGNORE INTO deadline_follows (user_id, did) VALUES (?, ?)', user.id, did);
-    }
+  if (route === 'PUT /api/plan') {
+    const { plan } = await readBody(req);
+    if (!isPlainObject(plan) || !Array.isArray(plan.weeks) || plan.weeks.length > 160) return json(res, 400, { error: 'bad_json' });
+    const text = JSON.stringify(plan);
+    if (text.length > 150_000) return json(res, 413, { error: 'too_large' });
+    await run(`INSERT INTO plans (user_id, data) VALUES (?, ?)
+      ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, updated_at = datetime('now')`, user.id, text);
+    return json(res, 200, { ok: true });
+  }
+  if (route === 'DELETE /api/plan') {
+    await run('DELETE FROM plans WHERE user_id = ?', user.id);
     return json(res, 200, { ok: true });
   }
 
-  const pm = url.pathname.match(/^\/api\/plan\/(\d{1,12})$/);
-  if (pm && (req.method === 'GET' || req.method === 'PUT')) {
-    const rid = Number(pm[1]);
-    if (!await one("SELECT 1 FROM results WHERE id = ? AND user_id = ? AND category = 'prep'", rid, user.id)) return json(res, 404, { error: 'not_found' });
-    if (req.method === 'GET') {
-      const row = await one('SELECT checks FROM plan_progress WHERE user_id = ? AND result_id = ?', user.id, rid);
-      return json(res, 200, { checks: row ? JSON.parse(row.checks) : [] });
+  // ---------- календарь ----------
+  if (route === 'GET /api/events') {
+    const rows = await all('SELECT id, title, date, note, kind, url FROM events WHERE user_id = ? ORDER BY date, id', user.id);
+    return json(res, 200, { events: rows });
+  }
+  if (route === 'POST /api/events') {
+    const { items } = await readBody(req);
+    if (!Array.isArray(items) || !items.length || items.length > 60) return json(res, 400, { error: 'bad_json' });
+    const clean = [];
+    for (const it of items) {
+      if (!isPlainObject(it)) return json(res, 400, { error: 'bad_json' });
+      const title = str(it.title).trim().slice(0, 200), date = str(it.date);
+      if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(Date.parse(date))) return json(res, 400, { error: 'bad_json' });
+      clean.push([title, date, str(it.note).slice(0, 500), ['deadline', 'exam', 'grant', 'task'].includes(it.kind) ? it.kind : 'task',
+        /^https?:\/\/[^\s"'<>]{1,300}$/i.test(str(it.url)) ? str(it.url) : '']);
     }
-    const { checks } = await readBody(req);
-    if (!Array.isArray(checks) || checks.length > 3000 || !checks.every(k => typeof k === 'string' && /^\d{1,3}:\d{1,2}$/.test(k))) return json(res, 400, { error: 'bad_json' });
-    await run(`INSERT INTO plan_progress (user_id, result_id, checks) VALUES (?, ?, ?)
-      ON CONFLICT (user_id, result_id) DO UPDATE SET checks = excluded.checks`, user.id, rid, JSON.stringify([...new Set(checks)]));
+    const n = await one('SELECT COUNT(*) AS c FROM events WHERE user_id = ?', user.id);
+    if (Number(n.c) + clean.length > 300) return json(res, 400, { error: 'too_many' });
+    for (const c of clean) await run('INSERT OR IGNORE INTO events (user_id, title, date, note, kind, url) VALUES (?, ?, ?, ?, ?, ?)', user.id, ...c);
+    return json(res, 201, { ok: true });
+  }
+  const em = url.pathname.match(/^\/api\/events\/(\d{1,12})$/);
+  if (em && req.method === 'DELETE') {
+    await run('DELETE FROM events WHERE id = ? AND user_id = ?', Number(em[1]), user.id);
     return json(res, 200, { ok: true });
   }
 
@@ -352,7 +370,6 @@ async function api(req, res, url) {
   }
   if (m && req.method === 'DELETE') {
     await run('DELETE FROM results WHERE id = ? AND user_id = ?', Number(m[1]), user.id);
-    await run('DELETE FROM plan_progress WHERE result_id = ? AND user_id = ?', Number(m[1]), user.id);
     return json(res, 200, { ok: true });
   }
 

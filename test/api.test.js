@@ -84,22 +84,29 @@ test('избранные вузы: свои, без дублей, только h
   assert.equal((await call(LOCAL, '/api/favorites', { method: 'POST', cookie: a.cookie, body: { name: '', place: 'UZ' } })).status, 400);
 });
 
-test('дедлайны и план: только свои данные, проверка ключей', async () => {
+test('план и календарь: только свои данные, без дублей, проверка дат', async () => {
   const a = await call(LOCAL, '/api/register', { method: 'POST', body: { name: 'Тест А', email: uniq('pa'), password: '12345678' } });
   const b = await call(LOCAL, '/api/register', { method: 'POST', body: { name: 'Тест Б', email: uniq('pb'), password: '12345678' } });
-  await call(LOCAL, '/api/deadlines', { method: 'POST', cookie: a.cookie, body: { id: 'gks_u' } });
-  assert.deepEqual((await call(LOCAL, '/api/deadlines', { cookie: a.cookie })).data.follows, ['gks_u']);
-  assert.deepEqual((await call(LOCAL, '/api/deadlines', { cookie: b.cookie })).data.follows, []);
-  assert.equal((await call(LOCAL, '/api/deadlines', { method: 'POST', cookie: a.cookie, body: { id: 'Bad Id!' } })).status, 400);
+  assert.equal((await call(LOCAL, '/api/plan')).status, 401);
+  assert.equal((await call(LOCAL, '/api/plan', { cookie: a.cookie })).data.plan, null);
+  const plan = { uni: ['KAIST', 'KR'], field: 'it', deadline: '2027-05-31', weeks: [{ tasks: [{ t: 'IELTS', done: false }] }] };
+  assert.equal((await call(LOCAL, '/api/plan', { method: 'PUT', cookie: a.cookie, body: { plan } })).status, 200);
+  assert.equal((await call(LOCAL, '/api/plan', { cookie: a.cookie })).data.plan.field, 'it');
+  assert.equal((await call(LOCAL, '/api/plan', { cookie: b.cookie })).data.plan, null, 'чужой план не виден');
+  assert.equal((await call(LOCAL, '/api/plan', { method: 'PUT', cookie: a.cookie, body: { plan: { weeks: 'x' } } })).status, 400);
 
-  const prep = await call(LOCAL, '/api/results', { method: 'POST', cookie: a.cookie, body: { category: 'prep', answers: {}, summary: { field: 'it' } } });
-  const work = await call(LOCAL, '/api/results', { method: 'POST', cookie: a.cookie, body: { category: 'work', answers: {}, summary: {} } });
-  const P = `/api/plan/${prep.data.id}`;
-  assert.equal((await call(LOCAL, P, { method: 'PUT', cookie: a.cookie, body: { checks: ['1:0', '2:1', '1:0'] } })).status, 200);
-  assert.deepEqual((await call(LOCAL, P, { cookie: a.cookie })).data.checks, ['1:0', '2:1']);
-  assert.equal((await call(LOCAL, P, { cookie: b.cookie })).status, 404, 'чужой план не виден');
-  assert.equal((await call(LOCAL, `/api/plan/${work.data.id}`, { cookie: a.cookie })).status, 404, 'план только у «Подготовки»');
-  assert.equal((await call(LOCAL, P, { method: 'PUT', cookie: a.cookie, body: { checks: ['<script>'] } })).status, 400);
+  const ev = { title: 'Подача в KAIST', date: '2027-05-31', kind: 'deadline', url: 'javascript:alert(1)' };
+  assert.equal((await call(LOCAL, '/api/events', { method: 'POST', cookie: a.cookie, body: { items: [ev, ev, { title: 'IELTS', date: '2027-02-10', kind: 'exam' }] } })).status, 201);
+  const list = (await call(LOCAL, '/api/events', { cookie: a.cookie })).data.events;
+  assert.equal(list.length, 2, 'одинаковые события не дублируются');
+  assert.equal(list[0].title, 'IELTS', 'сортировка по дате');
+  assert.equal(list[1].url, '', 'только http(s)-ссылки');
+  assert.equal((await call(LOCAL, '/api/events', { cookie: b.cookie })).data.events.length, 0);
+  assert.equal((await call(LOCAL, '/api/events', { method: 'POST', cookie: a.cookie, body: { items: [{ title: 'x', date: '31.05.2027' }] } })).status, 400);
+  await call(LOCAL, `/api/events/${list[0].id}`, { method: 'DELETE', cookie: b.cookie });
+  assert.equal((await call(LOCAL, '/api/events', { cookie: a.cookie })).data.events.length, 2, 'Б не удаляет события А');
+  await call(LOCAL, `/api/events/${list[0].id}`, { method: 'DELETE', cookie: a.cookie });
+  assert.equal((await call(LOCAL, '/api/events', { cookie: a.cookie })).data.events.length, 1);
 });
 
 test('сохранённые расчёты: только свои, проверка типа', async () => {

@@ -428,6 +428,8 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
 .plan-task { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; cursor: pointer; font-size: 15px; }
 .plan-task input { accent-color: var(--gold); width: 19px; height: 19px; margin-top: 3px; flex: 0 0 auto; }
 .plan-task input:checked + span { color: var(--ink-3); text-decoration: line-through; }
+.pick-marks .plan-task input:checked + span { color: var(--gold-2); text-decoration: none; }
+.pick-marks .plan-task input:disabled + span { color: var(--ink-3); }
 
 /* дедлайны */
 .dl-month { margin: 26px 0 12px; }
@@ -519,6 +521,16 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
 .pick-list button { text-align: left; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.03); font-size: 14px; }
 .pick-list button:hover { border-color: var(--gold); }
 .pick-list button span { display: block; font-size: 12px; color: var(--ink-3); }
+/* план: ручная правка */
+.ed-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.ed-row .input { flex: 1; min-width: 0; height: 44px; }
+.ed-row .input[type=date] { flex: 0 0 170px; }
+.ed-del { flex: 0 0 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); color: var(--ink-3); font-size: 18px; }
+.ed-del:hover { color: #ff8a80; border-color: #ff8a80; }
+.ed-add { height: 36px; font-size: 13px; margin-top: 4px; }
+.ed-bar { position: sticky; bottom: 16px; z-index: 5; display: flex; gap: 12px; flex-wrap: wrap; padding: 14px; margin-top: 18px; border-radius: var(--radius); background: rgba(10,12,18,.88); border: 1px solid var(--line-2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.pick-marks { display: grid; gap: 4px; max-height: 50vh; overflow: auto; }
+@media (max-width: 640px) { .ed-row { flex-wrap: wrap; } .ed-row .input[type=date] { flex: 1 1 100%; } }
 .cat-all-head { font-size: clamp(22px, 2.6vw, 32px); margin: 48px 0 16px; }
 .more-row { display: flex; justify-content: center; margin-top: 22px; }
 .source { color: var(--ink-3); font-size: 12px; margin-top: 30px; }
@@ -620,3 +632,4 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
   .reveal { opacity: 1; transform: none; }
 }
 @media (min-width: 1001px) { .auth-side .top .wordmark { visibility: hidden; } }
+.uni.dl.past { opacity: .5; }

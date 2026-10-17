@@ -136,25 +136,21 @@ const UI = {
   co_note: L('Цифры ориентировочные (2026) и зависят от города и вуза. Частичные скидки считаем как 50% обучения.', 'Figures are approximate (2026) and depend on the city and university. Partial discounts are counted as 50% of tuition.'),
   sum: L('сум', 'UZS'),
 
-  // дедлайны
+  // календарь: только события, добавленные пользователем
   dl_title: L('Календарь дедлайнов', 'Deadline calendar'),
-  dl_lead: L('Гранты, подача в вузы и экзамены на год вперёд. Отметь нужные — и добавь в календарь телефона с напоминаниями.', 'Grants, applications and exams for the year ahead. Follow the ones you need and add them to your phone calendar with reminders.'),
-  dl_all: L('Все', 'All'), dl_grant: L('Гранты', 'Grants'), dl_apply: L('Подача в вузы', 'Applications'), dl_exam: L('Экзамены', 'Exams'),
-  dl_mine: L('Мои', 'Following'), dl_follow: L('Следить', 'Follow'), dl_following: L('Слежу', 'Following'),
+  dl_lead: L('Здесь только то, что ты добавил(а) сам(а): даты из плана по неделям и свои события. Скачай их в календарь телефона — придут напоминания.', 'Only what you added yourself: dates from your weekly plan and your own events. Download them to your phone calendar to get reminders.'),
   dl_days: L('дн.', 'days'), dl_today: L('сегодня', 'today'), dl_ics: L('В календарь', 'To calendar'),
-  dl_ics_all: L('Скачать мои дедлайны в календарь (.ics)', 'Download my deadlines to calendar (.ics)'),
-  dl_ics_hint: L('Открой файл на телефоне — дедлайны появятся в календаре, напоминания придут за 30, 7 и 1 день.', 'Open the file on your phone — deadlines appear in your calendar with reminders 30, 7 and 1 day before.'),
-  dl_login: L('Войди, чтобы следить за дедлайнами', 'Log in to follow deadlines'),
-  dl_none_mine: L('Ты пока ни за чем не следишь. Нажми «Следить» у нужных дедлайнов.', 'You’re not following anything yet. Tap “Follow” on the deadlines you need.'),
-  dl_soon: L('Мои ближайшие дедлайны', 'My upcoming deadlines'), dl_open: L('Все дедлайны →', 'All deadlines →'),
-  dl_note: L('Даты — ориентир по прошлым годам и повторяются ежегодно. Точный срок всегда проверяй на официальном сайте по ссылке.', 'Dates are based on previous years and repeat yearly. Always check the exact date on the official website.'),
+  dl_ics_all: L('Скачать мой календарь (.ics)', 'Download my calendar (.ics)'),
+  dl_ics_hint: L('Открой файл на телефоне — события появятся в календаре, напоминания придут за 30, 7 и 1 день.', 'Open the file on your phone — events appear in your calendar with reminders 30, 7 and 1 day before.'),
+  dl_none_mine: L('Календарь пока пуст. Составь план по неделям и добавь его даты — или добавь своё событие ниже.', 'Your calendar is empty. Build a weekly plan and add its dates — or add your own event below.'),
+  dl_soon: L('Мои ближайшие события', 'My upcoming events'), dl_open: L('Весь календарь →', 'Full calendar →'),
+  dl_note: L('Сроки из списка — ориентир по прошлым годам. Точную дату всегда проверяй на официальном сайте.', 'Deadlines from the list are based on previous years. Always check the exact date on the official website.'),
 
   // личный план по неделям
   pl_title: L('Мой план по неделям', 'My weekly plan'),
-  pl_lead: L('План из твоего результата «Подготовка к вузу». Отмечай сделанное — прогресс сохраняется в кабинете.', 'Built from your “University prep” result. Tick off what you’ve done — progress is saved to your dashboard.'),
+  pl_lead: L('Выбери вуз, направление и дедлайн — сайт сам разложит подготовку по неделям. Потом поправь план под себя и добавь даты в календарь.', 'Pick a university, field and deadline — we’ll spread your prep over the weeks. Then adjust the plan and add its dates to your calendar.'),
   pl_left: L('До подачи осталось', 'Until applications'), pl_weeks: L('нед.', 'wk'),
   pl_week: L('Неделя', 'Week'), pl_now: L('эта неделя', 'this week'), pl_done: L('выполнено', 'done'),
-  pl_none: L('Сначала пройди тест «Подготовка к вузу» — из него соберём план.', 'Take the “University prep” test first — we’ll build the plan from it.'),
   pl_show_all: L('Показать все недели', 'Show all weeks'), pl_hide: L('Только ближайшие', 'Upcoming only'),
   pl_open: L('План по неделям', 'Weekly plan'),
 

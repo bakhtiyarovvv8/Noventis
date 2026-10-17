@@ -64,26 +64,28 @@ function nextDate(dl, from = new Date()) {
 }
 const daysLeft = dl => Math.round((nextDate(dl) - new Date(new Date().toDateString())) / 864e5);
 
-// Файл календаря .ics: телефон сам напомнит за 30, 7 и 1 день — без интернета и без нашего сервера
+// Файл календаря .ics из событий пользователя { id, title, date: 'ГГГГ-ММ-ДД', note, url }:
+// телефон сам напомнит за 30, 7 и 1 день — без интернета и без нашего сервера
 function buildIcs(list) {
   const pad = n => String(n).padStart(2, '0');
   const ymd = d => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
   // в .ics запятая, точка с запятой и обратный слэш экранируются
   const esc = s => String(s).replace(/[\\;,]/g, m => '\\' + m).replace(/\n/g, '\\n');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
-  const ev = list.map(dl => {
-    const d = nextDate(dl), end = new Date(d.getTime() + 864e5);
+  const ev = list.map(e => {
+    const [y, m, dd] = e.date.split('-').map(Number);
+    const d = new Date(y, m - 1, dd), end = new Date(y, m - 1, dd + 1);
     return [
-      'BEGIN:VEVENT', `UID:${dl.id}-${d.getFullYear()}@noventis`, `DTSTAMP:${stamp}`,
+      'BEGIN:VEVENT', `UID:${e.id}-${ymd(d)}@noventis`, `DTSTAMP:${stamp}`,
       `DTSTART;VALUE=DATE:${ymd(d)}`, `DTEND;VALUE=DATE:${ymd(end)}`,
-      `SUMMARY:${esc('⏰ ' + tx(dl.n))}`, `DESCRIPTION:${esc(tx(dl.note) + '\n' + dl.url)}`, `URL:${dl.url}`,
-      ...[30, 7, 1].flatMap(n => ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(tx(dl.n))}`, `TRIGGER:-P${n}D`, 'END:VALARM']),
+      `SUMMARY:${esc('⏰ ' + e.title)}`, `DESCRIPTION:${esc([e.note, e.url].filter(Boolean).join('\n'))}`, ...(e.url ? [`URL:${e.url}`] : []),
+      ...[30, 7, 1].flatMap(n => ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(e.title)}`, `TRIGGER:-P${n}D`, 'END:VALARM']),
       'END:VEVENT',
     ].join('\r\n');
   });
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Noventis//Deadlines//RU', 'CALSCALE:GREGORIAN', ...ev, 'END:VCALENDAR'].join('\r\n');
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Noventis//Calendar//RU', 'CALSCALE:GREGORIAN', ...ev, 'END:VCALENDAR'].join('\r\n');
 }
-function downloadIcs(list, name = 'noventis-deadlines.ics') {
+function downloadIcs(list, name = 'noventis-calendar.ics') {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([buildIcs(list)], { type: 'text/calendar;charset=utf-8' }));
   a.download = name; a.click();
