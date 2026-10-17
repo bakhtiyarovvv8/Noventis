@@ -136,6 +136,19 @@ const UI = {
   co_note: L('Цифры ориентировочные (2026) и зависят от города и вуза. Частичные скидки считаем как 50% обучения.', 'Figures are approximate (2026) and depend on the city and university. Partial discounts are counted as 50% of tuition.'),
   sum: L('сум', 'UZS'),
 
+  // дедлайны
+  dl_title: L('Календарь дедлайнов', 'Deadline calendar'),
+  dl_lead: L('Гранты, подача в вузы и экзамены на год вперёд. Отметь нужные — и добавь в календарь телефона с напоминаниями.', 'Grants, applications and exams for the year ahead. Follow the ones you need and add them to your phone calendar with reminders.'),
+  dl_all: L('Все', 'All'), dl_grant: L('Гранты', 'Grants'), dl_apply: L('Подача в вузы', 'Applications'), dl_exam: L('Экзамены', 'Exams'),
+  dl_mine: L('Мои', 'Following'), dl_follow: L('Следить', 'Follow'), dl_following: L('Слежу', 'Following'),
+  dl_days: L('дн.', 'days'), dl_today: L('сегодня', 'today'), dl_ics: L('В календарь', 'To calendar'),
+  dl_ics_all: L('Скачать мои дедлайны в календарь (.ics)', 'Download my deadlines to calendar (.ics)'),
+  dl_ics_hint: L('Открой файл на телефоне — дедлайны появятся в календаре, напоминания придут за 30, 7 и 1 день.', 'Open the file on your phone — deadlines appear in your calendar with reminders 30, 7 and 1 day before.'),
+  dl_login: L('Войди, чтобы следить за дедлайнами', 'Log in to follow deadlines'),
+  dl_none_mine: L('Ты пока ни за чем не следишь. Нажми «Следить» у нужных дедлайнов.', 'You’re not following anything yet. Tap “Follow” on the deadlines you need.'),
+  dl_soon: L('Мои ближайшие дедлайны', 'My upcoming deadlines'), dl_open: L('Все дедлайны →', 'All deadlines →'),
+  dl_note: L('Даты — ориентир по прошлым годам и повторяются ежегодно. Точный срок всегда проверяй на официальном сайте по ссылке.', 'Dates are based on previous years and repeat yearly. Always check the exact date on the official website.'),
+
   // навигация внутренних страниц и хаб инструментов
   nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'),
   tools_title: L('Инструменты', 'Tools'),

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Noventis — календарь дедлайнов</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="test-page">
+  <div class="test-bg"><img src="/img/chicago.jpg" alt=""></div>
+  <header class="nav scrolled">
+    <div class="container">
+      <a href="/" class="wordmark">Noventis<span>.</span></a>
+      <nav class="nav-links">
+        <a href="/tools" data-i18n="nav_tools"></a>
+        <a href="/catalog" data-i18n="nav_unis"></a>
+      </nav>
+      <div class="nav-right">
+        <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+        <div class="nav-auth"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="page-head">
+      <span class="kicker" data-i18n="nav_tools"></span>
+      <h1 data-i18n="dl_title"></h1>
+      <p data-i18n="dl_lead"></p>
+    </div>
+    <div class="chips-pick" id="types" style="margin-bottom:18px"></div>
+    <div id="list"></div>
+    <article class="card" style="margin-top:18px">
+      <button class="btn btn-gold btn-wrap" id="icsAll" data-i18n="dl_ics_all"></button>
+      <p class="note" data-i18n="dl_ics_hint"></p>
+    </article>
+    <p class="source" data-i18n="dl_note"></p>
+  </main>
+
+  <script src="/vendor/gsap.min.js"></script>
+  <script src="/js/data.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/deadlines-data.js"></script>
+  <script>
+    const $list = document.getElementById('list');
+    let FOLLOWS = new Set(), type = new URLSearchParams(location.search).get('type') || 'all';
+
+    const dateStr = d => d.toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    function render() {
+      document.getElementById('types').innerHTML = ['all', 'grant', 'apply', 'exam', 'mine']
+        .map(k => `<button type="button" class="chip-btn ${type === k ? 'on' : ''}" data-type="${k}">${t('dl_' + k)}</button>`).join('');
+      const list = DEADLINES
+        .filter(dl => type === 'all' || (type === 'mine' ? FOLLOWS.has(dl.id) : dl.type === type))
+        .sort((a, b) => nextDate(a) - nextDate(b));
+      if (!list.length) { $list.innerHTML = `<div class="empty">${t(type === 'mine' ? 'dl_none_mine' : 'cat_empty')}</div>`; return; }
+      // группируем по месяцам ближайшей даты
+      let month = '';
+      $list.innerHTML = list.map(dl => {
+        const d = nextDate(dl), left = daysLeft(dl), on = FOLLOWS.has(dl.id);
+        const m = d.toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { month: 'long', year: 'numeric' });
+        const head = m !== month ? `<h4 class="rank dl-month">${m}</h4>` : '';
+        month = m;
+        return head + `<div class="uni dl ${left <= 30 ? 'soon' : ''}">
+          <div class="dl-left"><b>${left === 0 ? t('dl_today') : left}</b>${left === 0 ? '' : `<span>${t('dl_days')}</span>`}</div>
+          <div class="meta"><b>${tx(dl.n)}</b><span>${dateStr(d)} · ${escapeHtml(placeName(dl.cc))} · ${t('dl_' + dl.type)}</span>
+            <span class="dl-note">${tx(dl.note)} · <a href="${dl.url}" target="_blank" rel="noopener noreferrer">${new URL(dl.url).hostname} ↗</a></span></div>
+          <button class="btn btn-ghost dl-ics" data-id="${dl.id}" type="button">${t('dl_ics')}</button>
+          <button class="btn ${on ? 'btn-gold' : 'btn-ghost'} dl-follow" data-id="${dl.id}" type="button">${t(on ? 'dl_following' : 'dl_follow')}</button>
+        </div>`;
+      }).join('');
+    }
+
+    document.addEventListener('click', async e => {
+      const ty = e.target.closest('[data-type]');
+      if (ty) { type = ty.dataset.type; render(); return; }
+      const ics = e.target.closest('.dl-ics');
+      if (ics) { downloadIcs([DEADLINES.find(x => x.id === ics.dataset.id)], ics.dataset.id + '.ics'); toast(t('dl_ics_hint')); return; }
+      const f = e.target.closest('.dl-follow');
+      if (f) {
+        if (!ME) { toast(t('dl_login')); setTimeout(() => location.href = '/auth?next=/deadlines', 900); return; }
+        const id = f.dataset.id, on = FOLLOWS.has(id);
+        const r = await api('/api/deadlines', { method: on ? 'DELETE' : 'POST', body: { id } });
+        if (!r.ok) return toast(t('err_server'));
+        on ? FOLLOWS.delete(id) : FOLLOWS.add(id);
+        render();
+      }
+    });
+    document.getElementById('icsAll').onclick = () => {
+      // вошедшим — только отмеченные, гостям и без отметок — все
+      const mine = DEADLINES.filter(dl => FOLLOWS.has(dl.id));
+      downloadIcs(mine.length ? mine : DEADLINES);
+      toast(t('dl_ics_hint'));
+    };
+    document.addEventListener('langchange', render);
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (await loadMe()) { const r = await api('/api/deadlines'); if (r.ok) FOLLOWS = new Set(r.data.follows); }
+      render();
+      gsap.from('.page-head > *', { y: 30, opacity: 0, stagger: .06, duration: 1, ease: 'expo.out' });
+    });
+  </script>
+</body>
+</html>

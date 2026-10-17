@@ -64,6 +64,12 @@ const ready = db.batch([
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE (user_id, name, place)
   )`,
+  // дедлайны, за которыми следит пользователь (id из public/js/deadlines-data.js)
+  `CREATE TABLE IF NOT EXISTS deadline_follows (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    did TEXT NOT NULL,
+    PRIMARY KEY (user_id, did)
+  )`,
 ], 'write');
 
 const hashPassword = (password, salt) => new Promise((resolve, reject) =>
@@ -266,6 +272,23 @@ async function api(req, res, url) {
     if (Number(n.c) >= 300) return json(res, 400, { error: 'fav_limit' });
     await run('INSERT OR IGNORE INTO favorites (user_id, name, place, web) VALUES (?, ?, ?, ?)', user.id, name, place, web);
     return json(res, 201, { ok: true });
+  }
+
+  if (route === 'GET /api/deadlines') {
+    const rows = await all('SELECT did FROM deadline_follows WHERE user_id = ?', user.id);
+    return json(res, 200, { follows: rows.map(r => r.did) });
+  }
+
+  if (route === 'POST /api/deadlines' || route === 'DELETE /api/deadlines') {
+    const did = str((await readBody(req)).id);
+    if (!/^[a-z0-9_]{1,30}$/.test(did)) return json(res, 400, { error: 'bad_json' });
+    if (req.method === 'DELETE') await run('DELETE FROM deadline_follows WHERE user_id = ? AND did = ?', user.id, did);
+    else {
+      const n = await one('SELECT COUNT(*) AS c FROM deadline_follows WHERE user_id = ?', user.id);
+      if (Number(n.c) >= 100) return json(res, 400, { error: 'too_many' });
+      await run('INSERT OR IGNORE INTO deadline_follows (user_id, did) VALUES (?, ?)', user.id, did);
+    }
+    return json(res, 200, { ok: true });
   }
 
   const m = url.pathname.match(/^\/api\/results\/(\d{1,12})$/);

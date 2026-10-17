@@ -74,6 +74,7 @@ em { font-style: normal; background: linear-gradient(100deg, var(--gold-2), var(
 .btn .arrow { transition: transform .4s var(--ease); }
 .btn:hover .arrow { transform: translateX(4px); }
 .btn[disabled] { opacity: .4; pointer-events: none; }
+.btn-wrap { white-space: normal; height: auto; min-height: 48px; padding: 12px 24px; text-align: center; line-height: 1.35; }
 .avatar {
   width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 12px;
   background: linear-gradient(135deg, var(--gold-2), var(--gold)); color: var(--gold-ink); margin-left: -10px;
@@ -366,6 +367,18 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
 .cost-cell span { font-size: 13px; color: var(--ink-3); }
 .cost-cell.big { border-color: rgba(226,189,127,.5); background: rgba(226,189,127,.08); }
 .cost-cell.big b { color: var(--gold-2); font-size: 28px; }
+/* дедлайны */
+.dl-month { margin: 26px 0 12px; }
+.dl-month:first-child { margin-top: 0; }
+.uni.dl { margin-bottom: 10px; }
+.uni.dl.soon { border-color: rgba(226,189,127,.45); }
+.dl-left { flex: 0 0 64px; text-align: center; }
+.dl-left b { display: block; font-family: var(--display); font-size: 24px; font-weight: 500; line-height: 1.1; }
+.dl-left span { font-size: 11px; color: var(--ink-3); }
+.uni.dl.soon .dl-left b { color: var(--gold-2); }
+.dl-note { display: block; margin-top: 2px; }
+.dl-note a { color: var(--gold); }
+.uni .btn { height: 38px; padding: 0 16px; font-size: 13px; }
 .pick { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-3); cursor: pointer; }
 .pick input { accent-color: var(--gold); width: 18px; height: 18px; }
 
@@ -458,6 +471,8 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
   .cmp-headrow > span:first-child { display: none; }
   .cmp-row > span:nth-child(2) { grid-column: 1; } .cmp-row > span:nth-child(3) { grid-column: 2; }
   .uni { flex-wrap: wrap; }
+  .uni .meta { flex: 1 1 calc(100% - 100px); }
+  .uni.dl .btn { flex: 1 1 0; }
 }
 /* печать / «Сохранить как PDF»: светлый отчёт без меню и кнопок */
 @media print {

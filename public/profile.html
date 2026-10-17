@@ -26,8 +26,20 @@
   <script src="/vendor/gsap.min.js"></script>
   <script src="/js/data.js"></script>
   <script src="/js/common.js"></script>
+  <script src="/js/deadlines-data.js"></script>
   <script>
-    let results = [];
+    let results = [], follows = [];
+
+    // три ближайших дедлайна, за которыми следит пользователь
+    function soonBlock() {
+      const list = DEADLINES.filter(dl => follows.includes(dl.id)).sort((a, b) => nextDate(a) - nextDate(b)).slice(0, 3);
+      if (!list.length) return '';
+      return `<span class="kicker">${t('dl_soon')}</span>
+        <div class="uni-list" style="margin:18px 0 56px">${list.map(dl => `<div class="uni dl ${daysLeft(dl) <= 30 ? 'soon' : ''}">
+          <div class="dl-left"><b>${daysLeft(dl) || t('dl_today')}</b>${daysLeft(dl) ? `<span>${t('dl_days')}</span>` : ''}</div>
+          <div class="meta"><b>${tx(dl.n)}</b><span>${nextDate(dl).toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'long' })} · ${escapeHtml(placeName(dl.cc))}</span></div></div>`).join('')}
+          <a class="note" href="/deadlines" style="color:var(--gold)">${t('dl_open')}</a></div>`;
+    }
     const app = document.getElementById('app');
 
     function resultTitle(r) {
@@ -47,6 +59,7 @@
         <div class="quick" style="margin-top:18px">
           ${Object.entries(CATEGORIES).map(([k, c]) => `<a href="/test?cat=${k}"><img src="${c.img}" alt="">${tx(c.title)} →</a>`).join('')}
         </div>
+        ${soonBlock()}
         <span class="kicker">${t('my_results')}</span>
         <div class="res-list" style="margin-top:18px">
           ${results.length ? results.map(r => `
@@ -97,6 +110,8 @@
     document.addEventListener('DOMContentLoaded', async () => {
       if (!await loadMe()) { location.href = '/auth?next=/profile'; return; }
       await loadFavs();
+      const d = await api('/api/deadlines');
+      if (d.ok) follows = d.data.follows;
       const r = await api('/api/results');
       results = r.data.results || [];
       render(true);
