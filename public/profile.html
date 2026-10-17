@@ -27,82 +27,9 @@
   <script src="/js/data.js"></script>
   <script src="/js/uz.js"></script>
   <script src="/js/common.js"></script>
-  <script src="/js/deadlines-data.js"></script>
-  <script>
-    let results = [], follows = [];
-
-    // три ближайших дедлайна, за которыми следит пользователь
-    function soonBlock() {
-      const list = DEADLINES.filter(dl => follows.includes(dl.id)).sort((a, b) => nextDate(a) - nextDate(b)).slice(0, 3);
-      if (!list.length) return '';
-      return `<span class="kicker">${t('dl_soon')}</span>
-        <div class="uni-list" style="margin:18px 0 56px">${list.map(dl => `<div class="uni dl ${daysLeft(dl) <= 30 ? 'soon' : ''}">
-          <div class="dl-left"><b>${daysLeft(dl) || t('dl_today')}</b>${daysLeft(dl) ? `<span>${t('dl_days')}</span>` : ''}</div>
-          <div class="meta"><b>${tx(dl.n)}</b><span>${nextDate(dl).toLocaleDateString(locale(), { day: 'numeric', month: 'long' })} · ${escapeHtml(placeName(dl.cc))}</span></div></div>`).join('')}
-          <a class="note" href="/deadlines" style="color:var(--gold)">${t('dl_open')}</a></div>`;
-    }
-    const app = document.getElementById('app');
-
-    function resultTitle(r) {
-      const s = r.summary;
-      if (r.category === 'prep') return FIELDS[s.field] ? tx(FIELDS[s.field].name) : '';
-      return (s.fields || []).slice(0, 3).map(f => `${tx(FIELDS[f.id].name)} ${f.pct}%`).join(' · ');
-    }
-
-    function render(animate) {
-      const since = new Date(ME.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
-      app.innerHTML = `
-        <div class="profile-top">
-          <div class="big-avatar">${escapeHtml(ME.name[0]).toUpperCase()}</div>
-          <div><h1>${t('hello')}, ${escapeHtml(ME.name)}</h1><p>${escapeHtml(ME.email)} · ${t('member_since')} ${since}</p></div>
-        </div>
-        <span class="kicker">${t('new_test')}</span>
-        <div class="quick" style="margin-top:18px">
-          ${Object.entries(CATEGORIES).map(([k, c]) => `<a href="/test?cat=${k}"><img src="${c.img}" alt="">${tx(c.title)} →</a>`).join('')}
-        </div>
-        ${soonBlock()}
-        <span class="kicker">${t('my_results')}</span>
-        <div class="res-list" style="margin-top:18px">
-          ${results.length ? results.map(r => `
-            <div class="res-item" data-id="${r.id}">
-              <div class="glyph">${{ prep: '✎', work: '◆' }[r.category] || '▲'}</div>
-              <div class="meta"><b>${tx(CATEGORIES[r.category].title)}</b>
-                <span>${new Date(r.created_at.replace(' ', 'T') + 'Z').toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' })} · ${resultTitle(r)}</span></div>
-              <div class="actions">
-                <a class="btn btn-gold" href="/test?result=${r.id}">${t('open')}</a>
-                <button class="btn btn-ghost del">${t('delete')}</button>
-              </div>
-            </div>`).join('') : `<div class="empty">${t('no_results')}</div>`}
-        </div>
-        <span class="kicker" id="favorites" style="margin-top:56px">${t('fav_title')}</span>
-        <div class="uni-list" style="margin-top:18px">
-          ${FAVS.size ? [...FAVS.values()].map(f => `<div class="uni"><div class="meta"><b>${escapeHtml(nm(f.name))}</b><span>${escapeHtml(placeName(f.place))}</span></div>
-            ${f.web ? `<a class="site" href="${escapeHtml(f.web)}" target="_blank" rel="noopener noreferrer">${t('cat_site')} ↗</a>` : ''}${heart(f.name, f.place, f.web)}</div>`).join('')
-            : `<div class="empty">${t('fav_empty')}</div>`}
-        </div>
-        <div class="more-row" style="justify-content:flex-start"><a class="btn btn-ghost" href="/catalog">${t('cat_all_link')}</a>
-          <a class="btn btn-ghost" href="/tools">${t('nav_tools')} →</a></div>`;
-      app.querySelectorAll('.del').forEach(b => b.onclick = async () => {
-        const item = b.closest('.res-item');
-        await api('/api/results/' + item.dataset.id, { method: 'DELETE' });
-        gsap.to(item, { opacity: 0, x: 40, height: 0, padding: 0, margin: 0, duration: .5, ease: 'power2.in', onComplete: () => {
-          results = results.filter(r => r.id !== +item.dataset.id); render(false);
-        }});
-      });
-      if (animate) gsap.from('.profile-top, .kicker, .quick a, .res-item, .empty', { y: 30, opacity: 0, stagger: .06, duration: 1, ease: 'expo.out' });
-    }
-
-    document.addEventListener('langchange', () => render(false));
-    document.addEventListener('DOMContentLoaded', async () => {
-      if (!await loadMe()) { location.href = '/auth?next=/profile'; return; }
-      await loadFavs();
-      const d = await api('/api/deadlines');
-      if (d.ok) follows = d.data.follows;
-      const r = await api('/api/results');
-      results = (r.data.results || []).filter(x => CATEGORIES[x.category]);
-      render(true);
-      if (location.hash === '#favorites') document.getElementById('favorites').scrollIntoView({ behavior: 'smooth' });
-    });
-  </script>
+  <script src="/js/abroad.js"></script>
+  <script src="/js/unis-data.js"></script>
+  <script src="/js/finder.js"></script>
+  <script src="/js/cabinet.js"></script>
 </body>
 </html>

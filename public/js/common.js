@@ -84,7 +84,7 @@ const UI = {
   rt_title: L('Пройти тест ещё раз?', 'Take the test again?'),
   rt_text: L('Ты уже проходил(а) этот тест. Новая попытка сохранится отдельно — прошлые результаты останутся в кабинете.', 'You’ve already taken this test. The new attempt is saved separately — your previous results stay in your dashboard.'),
   rt_count: L('Попыток', 'Attempts'), rt_yes: L('Да, пройти ещё раз', 'Yes, take it again'), rt_last: L('Открыть последний результат', 'Open my last result'),
-  cancel: L('Отмена', 'Cancel'), attempt: L('попытка', 'attempt'),
+  cancel: L('Отмена', 'Cancel'), attempt: L('Попытка', 'Attempt'),
 
   // profile
   hello: L('Привет', 'Hi'), member_since: L('С нами с', 'Member since'),
