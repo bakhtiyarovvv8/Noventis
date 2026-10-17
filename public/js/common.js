@@ -89,16 +89,6 @@ const UI = {
   share_saved: L('Картинка сохранена — отправь её в Telegram или Instagram', 'Image saved — send it to Telegram or Instagram'),
   report_for: L('Отчёт для', 'Report for'), report_date: L('Дата', 'Date'),
 
-  // сравнение результатов
-  cmp_btn: L('Сравнить выбранные', 'Compare selected'), cmp_mark: L('Сравнить', 'Compare'),
-  cmp_pick: L('Отметь два результата одного теста («Университет» или «Работа»), чтобы сравнить.', 'Tick two results of the same test (“University” or “Career”) to compare.'),
-  cmp_same: L('Сравнивать можно только результаты одного теста', 'You can only compare results of the same test'),
-  cmp_title: L('Как изменились твои склонности', 'How your interests changed'),
-  cmp_lead: L('Слева — более ранний результат, справа — более новый.', 'Left — the earlier result, right — the newer one.'),
-  cmp_rose: L('Выросло сильнее всего', 'Grew the most'), cmp_fell: L('Снизилось', 'Dropped'),
-  cmp_field: L('Направление', 'Field'), cmp_change: L('Изменение', 'Change'),
-  cmp_none: L('Результаты не найдены', 'Results not found'),
-
   // калькулятор шансов
   ch_title: L('Калькулятор шансов', 'Admission chances'),
   ch_lead: L('Введи свои баллы — покажем, куда ты поступишь с запасом, куда реально, а куда это мечта.', 'Enter your scores — see where you’re safe, where it’s realistic and where it’s a dream.'),
@@ -158,20 +148,6 @@ const UI = {
   pl_show_all: L('Показать все недели', 'Show all weeks'), pl_hide: L('Только ближайшие', 'Upcoming only'),
   pl_open: L('План по неделям', 'Weekly plan'),
 
-  // мини-тест английского
-  en_title: L('Тест английского', 'English test'),
-  en_lead: L('30 вопросов за 10 минут: грамматика, слова и чтение. Узнаешь уровень и примерный балл IELTS.', '30 questions in 10 minutes: grammar, vocabulary and reading. Find out your level and an approximate IELTS score.'),
-  en_start: L('Начать тест', 'Start the test'), en_time: L('Осталось', 'Time left'),
-  en_finish: L('Завершить', 'Finish'), en_result: L('Твой уровень английского', 'Your English level'),
-  en_band: L('Примерно IELTS', 'Approx. IELTS'), en_correct: L('верных ответов', 'correct answers'),
-  en_note: L('Это быстрая оценка, а не настоящий IELTS: в нём есть ещё Writing и Speaking. Используй её, чтобы понять, с чего начать подготовку.', 'This is a quick estimate, not a real IELTS — the exam also has Writing and Speaking. Use it to see where to start.'),
-  en_next: L('Что делать дальше', 'What to do next'),
-  en_tip_low: L('Начни с базы: грамматика A2–B1 и 15–20 новых слов в день. Через 2–3 месяца пройди тест снова.', 'Start with the basics: A2–B1 grammar and 15–20 new words a day. Retake in 2–3 months.'),
-  en_tip_mid: L('Ты близко к B2. Переходи на материалы IELTS: Reading и Listening каждый день, Writing 2 раза в неделю.', 'You’re close to B2. Move to IELTS materials: Reading and Listening daily, Writing twice a week.'),
-  en_tip_high: L('Сильный уровень! Тренируй Writing и Speaking на время и запишись на IELTS.', 'Strong level! Practise timed Writing and Speaking and book your IELTS.'),
-  en_resources: L('Бесплатные ресурсы', 'Free resources'), en_retake: L('Пройти ещё раз', 'Retake'),
-  en_text: L('Прочитай текст и ответь на вопросы', 'Read the text and answer the questions'),
-
   // бесплатные ресурсы
   rs_title: L('Бесплатные ресурсы', 'Free resources'),
   rs_lead: L('Проверенные бесплатные курсы и сайты для подготовки к экзаменам и по каждой сфере.', 'Hand-picked free courses and websites for exam prep and every field.'),
@@ -189,35 +165,6 @@ const UI = {
   cr_pick2: L('Отметь две профессии, чтобы сравнить их бок о бок.', 'Tick two careers to compare them side by side.'),
   cr_back: L('← Все профессии', '← All careers'), cr_more: L('Подробнее →', 'Details →'),
   cr_unis: L('Сильные вузы', 'Top universities'), cr_links: L('Дальше', 'Next steps'),
-
-  // родители и учителя
-  fm_title: L('Родители и учителя', 'Parents & teachers'),
-  fm_lead: L('Ученик сам решает, кому показать результаты. Родитель видит результаты ребёнка по коду, учитель — результаты своего класса.', 'Students decide who sees their results. Parents use a code; teachers see their own class.'),
-  fm_student: L('Я ученик', 'I’m a student'), fm_parent: L('Я родитель', 'I’m a parent'), fm_teacher: L('Я учитель', 'I’m a teacher'),
-  fm_my_code: L('Мой код для родителя', 'My code for parents'),
-  fm_code_hint: L('Отправь этот код родителю — он увидит твои результаты (только чтение). Новый код отменяет старый.', 'Send this code to a parent — they’ll see your results (read-only). A new code replaces the old one.'),
-  fm_make_code: L('Создать код', 'Create code'), fm_new_code: L('Новый код', 'New code'), fm_copy: L('Скопировать', 'Copy'), fm_copied: L('Код скопирован', 'Code copied'),
-  fm_who: L('Кто видит мои результаты', 'Who can see my results'), fm_nobody: L('Пока никто', 'Nobody yet'),
-  fm_revoke: L('Закрыть доступ', 'Revoke'), fm_join: L('Вступить в класс по коду учителя', 'Join a class with the teacher’s code'),
-  fm_my_classes: L('Мои классы', 'My classes'), fm_leave: L('Выйти', 'Leave'), fm_teacher_of: L('учитель', 'teacher'),
-  fm_add_kid: L('Код ребёнка', 'Child’s code'), fm_add: L('Добавить', 'Add'), fm_kids: L('Мои дети', 'My children'),
-  fm_no_kids: L('Попроси ребёнка создать код в разделе «Я ученик» на этой странице.', 'Ask your child to create a code under “I’m a student” on this page.'),
-  fm_remove: L('Убрать', 'Remove'), fm_new_class: L('Название класса, например 11-А', 'Class name, e.g. 11-A'),
-  fm_create: L('Создать класс', 'Create class'), fm_class_code: L('Код класса для учеников', 'Class code for students'),
-  fm_members: L('учеников', 'students'), fm_no_members: L('Пока никто не вступил. Отправь ученикам код класса.', 'No one has joined yet. Send students the class code.'),
-  fm_delete_class: L('Удалить класс', 'Delete class'), fm_latest: L('Последние результаты', 'Latest results'),
-  fm_no_res: L('Тестов пока нет', 'No tests yet'), fm_all_res: L('Все результаты →', 'All results →'),
-  fm_results_of: L('Результаты', 'Results of'), fm_back: L('← Родители и учителя', '← Parents & teachers'),
-  err_bad_code: L('Код не найден — проверь буквы и цифры', 'Code not found — check the letters and digits'),
-  err_own_code: L('Это твой собственный код', 'That’s your own code'),
-  fm_viewing: L('Просмотр результата ученика', 'Viewing a student’s result'),
-
-  // Telegram-бот
-  tg_title: L('Напоминания в Telegram', 'Telegram reminders'),
-  tg_lead: L('Бот напомнит о дедлайнах за 30, 7 и 1 день и по понедельникам — о плане подготовки.', 'The bot reminds you 30, 7 and 1 day before deadlines and about your study plan every Monday.'),
-  tg_connect: L('Подключить Telegram', 'Connect Telegram'), tg_on: L('Telegram подключён ✓', 'Telegram connected ✓'),
-  tg_off: L('Отключить', 'Disconnect'), tg_soon: L('Telegram-бот скоро заработает. А пока добавь дедлайны в календарь телефона (.ics).', 'The Telegram bot is coming soon. Meanwhile, add deadlines to your phone calendar (.ics).'),
-  tg_opened: L('Открой Telegram и нажми «Start» — бот подключится', 'Open Telegram and press “Start” — the bot will connect'),
 
   // навигация внутренних страниц и хаб инструментов
   nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'),

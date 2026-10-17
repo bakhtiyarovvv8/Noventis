@@ -29,16 +29,7 @@
   <script src="/js/common.js"></script>
   <script src="/js/deadlines-data.js"></script>
   <script>
-    let results = [], follows = [], TG = { enabled: false, linked: false };
-
-    function tgBlock() {
-      return `<article class="card tg-card"><div class="tg-row">
-        <div><b>${t('tg_title')}</b><p class="note" style="margin:4px 0 0">${TG.enabled ? t('tg_lead') : t('tg_soon')}</p></div>
-        ${!TG.enabled ? `<a class="btn btn-ghost" href="/deadlines">${t('dl_title')} →</a>`
-          : TG.linked ? `<span class="chip gold">${t('tg_on')}</span><button class="btn btn-ghost" id="tgOff">${t('tg_off')}</button>`
-          : `<button class="btn btn-gold" id="tgOn">${t('tg_connect')}</button>`}
-      </div></article>`;
-    }
+    let results = [], follows = [];
 
     // три ближайших дедлайна, за которыми следит пользователь
     function soonBlock() {
@@ -52,14 +43,8 @@
     }
     const app = document.getElementById('app');
 
-    // тест английского живёт на своей странице, остальные — в /test
-    const catTitle = c => c === 'english' ? t('en_title') : tx(CATEGORIES[c].title);
-    const openHref = r => r.category === 'english' ? `/english?result=${r.id}` : `/test?result=${r.id}`;
-    const comparable = r => r.category === 'university' || r.category === 'work';
-
     function resultTitle(r) {
       const s = r.summary;
-      if (r.category === 'english') return `${s.cefr} · IELTS ≈ ${s.band} · ${s.score}/${s.total}`;
       if (r.category === 'prep') return FIELDS[s.field] ? tx(FIELDS[s.field].name) : '';
       return (s.fields || []).slice(0, 3).map(f => `${tx(FIELDS[f.id].name)} ${f.pct}%`).join(' · ');
     }
@@ -76,23 +61,19 @@
           ${Object.entries(CATEGORIES).map(([k, c]) => `<a href="/test?cat=${k}"><img src="${c.img}" alt="">${tx(c.title)} →</a>`).join('')}
         </div>
         ${soonBlock()}
-        <div style="margin-bottom:56px">${tgBlock()}</div>
         <span class="kicker">${t('my_results')}</span>
         <div class="res-list" style="margin-top:18px">
           ${results.length ? results.map(r => `
             <div class="res-item" data-id="${r.id}">
-              <div class="glyph">${{ prep: '✎', work: '◆', english: 'Aa' }[r.category] || '▲'}</div>
-              <div class="meta"><b>${catTitle(r.category)}</b>
+              <div class="glyph">${{ prep: '✎', work: '◆' }[r.category] || '▲'}</div>
+              <div class="meta"><b>${tx(CATEGORIES[r.category].title)}</b>
                 <span>${new Date(r.created_at.replace(' ', 'T') + 'Z').toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' })} · ${resultTitle(r)}</span></div>
               <div class="actions">
-                ${comparable(r) ? `<label class="pick"><input type="checkbox" class="cmp" value="${r.id}" data-cat="${r.category}">${t('cmp_mark')}</label>` : ''}
-                <a class="btn btn-gold" href="${openHref(r)}">${t('open')}</a>
+                <a class="btn btn-gold" href="/test?result=${r.id}">${t('open')}</a>
                 <button class="btn btn-ghost del">${t('delete')}</button>
               </div>
             </div>`).join('') : `<div class="empty">${t('no_results')}</div>`}
         </div>
-        ${results.filter(comparable).length > 1 ? `<div class="more-row" style="justify-content:flex-start;align-items:center;gap:14px">
-          <button class="btn btn-ghost" id="cmpGo" disabled>${t('cmp_btn')}</button><span class="note" style="margin:0">${t('cmp_pick')}</span></div>` : ''}
         <span class="kicker" id="favorites" style="margin-top:56px">${t('fav_title')}</span>
         <div class="uni-list" style="margin-top:18px">
           ${FAVS.size ? [...FAVS.values()].map(f => `<div class="uni"><div class="meta"><b>${escapeHtml(nm(f.name))}</b><span>${escapeHtml(placeName(f.place))}</span></div>
@@ -100,7 +81,6 @@
             : `<div class="empty">${t('fav_empty')}</div>`}
         </div>
         <div class="more-row" style="justify-content:flex-start"><a class="btn btn-ghost" href="/catalog">${t('cat_all_link')}</a>
-          <a class="btn btn-ghost" href="/family">${t('fm_title')}</a>
           <a class="btn btn-ghost" href="/tools">${t('nav_tools')} →</a></div>`;
       app.querySelectorAll('.del').forEach(b => b.onclick = async () => {
         const item = b.closest('.res-item');
@@ -109,28 +89,6 @@
           results = results.filter(r => r.id !== +item.dataset.id); render(false);
         }});
       });
-      const on = document.getElementById('tgOn'), off = document.getElementById('tgOff');
-      if (on) on.onclick = async () => {
-        // окно открываем сразу по клику, иначе браузер его заблокирует
-        const w = window.open('', '_blank');
-        const r = await api('/api/tg/link', { method: 'POST', body: { lang: LANG } });
-        if (!r.ok) { if (w) w.close(); return toast(t('err_server')); }
-        if (w) w.location = r.data.url; else location.href = r.data.url;
-        toast(t('tg_opened'));
-      };
-      if (off) off.onclick = async () => { await api('/api/tg', { method: 'DELETE' }); TG.linked = false; render(false); };
-      // сравнение: ровно два результата одного теста
-      const go = document.getElementById('cmpGo');
-      app.querySelectorAll('.cmp').forEach(c => c.onchange = () => {
-        const on = [...app.querySelectorAll('.cmp:checked')];
-        if (on.length > 2) { c.checked = false; return; }
-        if (on.length === 2 && on[0].dataset.cat !== on[1].dataset.cat) { c.checked = false; toast(t('cmp_same')); return; }
-        go.disabled = on.length !== 2;
-      });
-      if (go) go.onclick = () => {
-        const [a, b] = [...app.querySelectorAll('.cmp:checked')].map(c => c.value);
-        location.href = `/compare?a=${a}&b=${b}`;
-      };
       if (animate) gsap.from('.profile-top, .kicker, .quick a, .res-item, .empty', { y: 30, opacity: 0, stagger: .06, duration: 1, ease: 'expo.out' });
     }
 
@@ -138,11 +96,10 @@
     document.addEventListener('DOMContentLoaded', async () => {
       if (!await loadMe()) { location.href = '/auth?next=/profile'; return; }
       await loadFavs();
-      const [d, tg] = await Promise.all([api('/api/deadlines'), api('/api/tg')]);
+      const d = await api('/api/deadlines');
       if (d.ok) follows = d.data.follows;
-      if (tg.ok) TG = tg.data;
       const r = await api('/api/results');
-      results = r.data.results || [];
+      results = (r.data.results || []).filter(x => CATEGORIES[x.category]);
       render(true);
       if (location.hash === '#favorites') document.getElementById('favorites').scrollIntoView({ behavior: 'smooth' });
     });
