@@ -519,5 +519,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   document.getElementById('bg').src = cat.img;
   answers = { ...loadProfile() };
+  // тест уже проходили — сначала спрашиваем, точно ли пройти ещё раз
+  const prev = ((await api('/api/results')).data.results || []).filter(x => x.category === CAT);
+  if (prev.length) {
+    const v = await ask(t('rt_title'), `${t('rt_text')}<br><br><b>${t('rt_count')}: ${prev.length}</b>`, [
+      { v: 'yes', label: t('rt_yes'), gold: true }, { v: 'last', label: t('rt_last') }, { v: null, label: t('cancel') }]);
+    if (v === 'last') { location.href = '/test?result=' + prev[0].id; return; }
+    if (v !== 'yes') { location.href = document.referrer.startsWith(location.origin) ? document.referrer : '/'; return; }
+  }
   renderIntro();
 });

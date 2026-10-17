@@ -76,6 +76,16 @@ const UI = {
   eng_warn: L('Для зарубежных вузов подтяни английский до B2+ / IELTS 6.0+', 'For universities abroad, raise your English to B2+ / IELTS 6.0+'),
   age_note_young: L('Тебе ещё рано поступать — отлично! Есть время спокойно подготовиться и попробовать олимпиады.', 'You’re still young — great! You have time to prepare calmly and try olympiads.'),
 
+  // главная вошедшего и повторный тест
+  home_title: L('Начнём<br>твой <em>путь</em>', 'Let’s start<br>your <em>journey</em>'),
+  home_sub: L('Начни с одного из трёх тестов. Каждая попытка сохраняется в кабинете — можно проходить снова и смотреть, как меняется результат.',
+              'Start with one of the three tests. Every attempt is saved to your dashboard — retake any time and see how your result changes.'),
+  home_done: L('пройден', 'taken'), home_again: L('Пройти ещё раз', 'Take again'),
+  rt_title: L('Пройти тест ещё раз?', 'Take the test again?'),
+  rt_text: L('Ты уже проходил(а) этот тест. Новая попытка сохранится отдельно — прошлые результаты останутся в кабинете.', 'You’ve already taken this test. The new attempt is saved separately — your previous results stay in your dashboard.'),
+  rt_count: L('Попыток', 'Attempts'), rt_yes: L('Да, пройти ещё раз', 'Yes, take it again'), rt_last: L('Открыть последний результат', 'Open my last result'),
+  cancel: L('Отмена', 'Cancel'), attempt: L('попытка', 'attempt'),
+
   // profile
   hello: L('Привет', 'Hi'), member_since: L('С нами с', 'Member since'),
   my_results: L('Мои результаты', 'My results'), no_results: L('Пока нет результатов. Пройди первый тест!', 'No results yet. Take your first test!'),
@@ -251,6 +261,26 @@ async function logout() {
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Окно с вопросом. buttons: [{ v, label, gold }] → промис со значением v нажатой кнопки (null — закрыли)
+function ask(title, html, buttons) {
+  return new Promise(resolve => {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><h3>${title}</h3>${html ? `<div class="modal-body"><p>${html}</p></div>` : ''}
+      <div class="row">${buttons.map((b, i) => `<button type="button" class="btn ${b.gold ? 'btn-gold' : 'btn-ghost'}" data-i="${i}">${b.label}</button>`).join('')}</div></div>`;
+    const close = v => { back.remove(); removeEventListener('keydown', onKey); resolve(v); };
+    const onKey = e => { if (e.key === 'Escape') close(null); };
+    back.addEventListener('click', e => {
+      if (e.target === back) return close(null);
+      const b = e.target.closest('[data-i]');
+      if (b) close(buttons[b.dataset.i].v);
+    });
+    addEventListener('keydown', onKey);
+    document.body.appendChild(back);
+    back.querySelector('.btn-gold, .btn').focus();
+  });
 }
 
 function toast(msg) {

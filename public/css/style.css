@@ -502,6 +502,28 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
 .tool b { font-family: var(--display); font-weight: 500; font-size: 18px; }
 .tool span { color: var(--ink-3); font-size: 14px; }
 
+/* главная вошедшего: приветствие и сразу три теста */
+.user-home .flight, .user-home .how, .user-home .world, .user-home .cta, .user-home .scroll-cue,
+.user-home .nav-links a[href^="#"], .user-home .hero-cta, .user-home #tracks .section-head { display: none; }
+.user-home .hero { height: auto; min-height: 0; padding-top: 120px; }
+.user-home .hero-content { padding-bottom: 0; }
+.user-home .hero h1 { font-size: clamp(36px, 4.6vw, 68px); max-width: none; margin: 16px 0 14px; }
+.user-home .hero h1 br { display: none; }
+.user-home .hero h1 .line { display: inline-block; margin-right: .28em; }
+.user-home .hero p.sub { margin-bottom: 0; max-width: 720px; }
+.user-home #tracks { padding: 36px 0 90px; }
+.user-home .track { min-height: 440px; }
+@media (max-width: 1000px) { .user-home .track { min-height: 300px; padding: 24px; } .user-home .hero { padding-top: 100px; } }
+.track-done { position: absolute; top: 22px; right: 24px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  background: rgba(6,7,11,.6); border: 1px solid rgba(226,189,127,.5); color: var(--gold-2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+/* окно подтверждения */
+.modal-back { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 20px; background: rgba(6,7,11,.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.modal { width: min(520px, 100%); max-height: 86vh; overflow: auto; padding: 32px; border-radius: var(--radius); background: #10121a; border: 1px solid var(--line-2); }
+.modal h3 { font-size: 22px; margin: 0 0 12px; }
+.modal p { color: var(--ink-2); margin: 0 0 24px; }
+.modal .row { display: flex; gap: 10px; flex-wrap: wrap; }
+
 /* responsive */
 @media (max-width: 1000px) {
   .tracks-grid { grid-template-columns: 1fr; }

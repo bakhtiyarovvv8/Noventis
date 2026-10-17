@@ -11,17 +11,22 @@ document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click
   if (target) { e.preventDefault(); lenis.scrollTo(target, { offset: -20, duration: 1.8 }); }
 }));
 
-// --- треки
+// --- треки. У вошедшего на карточке — сколько раз тест уже пройден
+let RESULTS = null;
 function renderTracks() {
   const grid = document.getElementById('tracks-grid');
-  grid.innerHTML = Object.entries(CATEGORIES).map(([id, c], i) => `
-    <a class="track reveal" href="/test?cat=${id}">
+  grid.innerHTML = Object.entries(CATEGORIES).map(([id, c], i) => {
+    const mine = RESULTS ? RESULTS.filter(r => r.category === id) : [];
+    const last = mine[0] && new Date(mine[0].created_at.replace(' ', 'T') + 'Z').toLocaleDateString(locale(), { day: 'numeric', month: 'long' });
+    return `<a class="track reveal" href="/test?cat=${id}">
       <img src="${c.img}" alt="" loading="lazy">
       <span class="idx">0${i + 1}</span>
+      ${mine.length ? `<span class="track-done">✓ ${t('home_done')}: ${mine.length} · ${last}</span>` : ''}
       <h3>${tx(c.title)}</h3>
       <p>${tx(c.lead)}</p>
-      <div class="go"><span>${t('start_track')}</span><span class="circle">→</span></div>
-    </a>`).join('');
+      <div class="go"><span>${t(mine.length ? 'home_again' : 'start_track')}</span><span class="circle">→</span></div>
+    </a>`;
+  }).join('');
   grid.querySelectorAll('.track').forEach(card => {
     card.addEventListener('mousemove', e => {
       const r = card.getBoundingClientRect();
@@ -32,10 +37,14 @@ function renderTracks() {
   });
 }
 
-// --- заголовок героя построчно
+// --- заголовок героя построчно; у вошедшего — приветствие «Начнём путь»
 function splitHero() {
   const h = document.querySelector('.hero-title');
-  h.innerHTML = t('hero_title').split('<br>').map(l => `<span class="line"><span>${l}</span></span>`).join('');
+  h.innerHTML = t(ME ? 'home_title' : 'hero_title').split('<br>').map(l => `<span class="line"><span>${l}</span></span>`).join('');
+  if (ME) {
+    document.querySelector('.hero .kicker').textContent = `${t('hello')}, ${ME.name}`;
+    document.querySelector('.hero .sub').innerHTML = t('home_sub');
+  }
   return h.querySelectorAll('.line > span');
 }
 
@@ -125,8 +134,17 @@ function reveals() {
   gsap.fromTo('.cta .bg', { yPercent: -10 }, { yPercent: 10, ease: 'none', scrollTrigger: { trigger: '.cta', start: 'top bottom', end: 'bottom top', scrub: true } });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadMe();
+document.addEventListener('DOMContentLoaded', async () => {
+  // вошедший пользователь сразу видит три теста; пролёт и рассказ о сайте — только для гостей
+  if (await loadMe()) {
+    document.body.classList.add('user-home');
+    const r = await api('/api/results');
+    RESULTS = r.ok ? r.data.results : [];
+    renderTracks();
+    intro();
+    reveals();
+    return;
+  }
   renderTracks();
   intro();
   flight();

@@ -64,7 +64,9 @@
   <script src="/js/common.js"></script>
   <script>
     const params = new URLSearchParams(location.search);
-    const next = (params.get('next') || '/profile').startsWith('/') ? (params.get('next') || '/profile') : '/profile';
+    // возврат только на свой сайт: «//evil.com» и «/\evil.com» браузер понял бы как чужой адрес
+    const asked = params.get('next') || '/';
+    const next = /^\/(?![\/\\])/.test(asked) ? asked : '/';
     let mode = params.get('mode') === 'register' ? 'register' : 'login';
     const form = document.getElementById('auth-form');
     const errEl = document.getElementById('form-error');
