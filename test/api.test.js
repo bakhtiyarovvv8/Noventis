@@ -65,6 +65,25 @@ test('чужие результаты не видны и не удаляются
   assert.equal((await call(LOCAL, '/api/results', { cookie: b.cookie })).data.results.length, 0);
 });
 
+test('избранные вузы: свои, без дублей, только http(s)-ссылки', async () => {
+  assert.equal((await call(LOCAL, '/api/favorites')).status, 401);
+  const a = await call(LOCAL, '/api/register', { method: 'POST', body: { name: 'Тест А', email: uniq('fa'), password: '12345678' } });
+  const b = await call(LOCAL, '/api/register', { method: 'POST', body: { name: 'Тест Б', email: uniq('fb'), password: '12345678' } });
+  const uni = { name: 'Inha University in Tashkent', place: 'UZ', web: 'https://inha.uz' };
+  assert.equal((await call(LOCAL, '/api/favorites', { method: 'POST', cookie: a.cookie, body: uni })).status, 201);
+  await call(LOCAL, '/api/favorites', { method: 'POST', cookie: a.cookie, body: uni });
+  await call(LOCAL, '/api/favorites', { method: 'POST', cookie: a.cookie, body: { name: 'KAIST', place: 'kr', web: 'javascript:alert(1)' } });
+  const list = (await call(LOCAL, '/api/favorites', { cookie: a.cookie })).data.favorites;
+  assert.equal(list.length, 2);
+  assert.equal(list.find(f => f.name === 'KAIST').web, '');
+  assert.equal((await call(LOCAL, '/api/favorites', { cookie: b.cookie })).data.favorites.length, 0);
+  await call(LOCAL, '/api/favorites', { method: 'DELETE', cookie: b.cookie, body: uni });
+  assert.equal((await call(LOCAL, '/api/favorites', { cookie: a.cookie })).data.favorites.length, 2, 'Б не удаляет избранное А');
+  await call(LOCAL, '/api/favorites', { method: 'DELETE', cookie: a.cookie, body: uni });
+  assert.equal((await call(LOCAL, '/api/favorites', { cookie: a.cookie })).data.favorites.length, 1);
+  assert.equal((await call(LOCAL, '/api/favorites', { method: 'POST', cookie: a.cookie, body: { name: '', place: 'UZ' } })).status, 400);
+});
+
 test('проверка входящих данных: 400 вместо падения', async () => {
   assert.equal((await call(LOCAL, '/api/login', { method: 'POST', body: '{oops' })).status, 400);
   assert.equal((await call(LOCAL, '/api/register', { method: 'POST', body: { name: { a: 1 }, email: 5, password: [1] } })).status, 400);

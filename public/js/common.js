@@ -80,6 +80,29 @@ const UI = {
   hello: L('Привет', 'Hi'), member_since: L('С нами с', 'Member since'),
   my_results: L('Мои результаты', 'My results'), no_results: L('Пока нет результатов. Пройди первый тест!', 'No results yet. Take your first test!'),
   open: L('Открыть', 'Open'), delete: L('Удалить', 'Delete'), new_test: L('Новый тест', 'New test'),
+
+  // навигация внутренних страниц и хаб инструментов
+  nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'),
+  tools_title: L('Инструменты', 'Tools'),
+  tools_lead: L('Всё, что помогает выбрать путь и поступить: от каталога вузов до плана подготовки.', 'Everything that helps you choose a path and get in: from the university catalogue to your study plan.'),
+
+  // каталог вузов
+  cat_title: L('Все вузы мира', 'All universities in the world'),
+  cat_lead: L('Более 10 000 университетов из 200 стран. Ищи по названию или выбери страну.', 'Over 10,000 universities in 200 countries. Search by name or pick a country.'),
+  cat_search: L('Название вуза', 'University name'), cat_all: L('Все страны', 'All countries'),
+  cat_found: L('Найдено', 'Found'), cat_more: L('Показать ещё', 'Show more'),
+  cat_site: L('Сайт', 'Website'), cat_google: L('Найти в Google', 'Search Google'),
+  cat_empty: L('Ничего не нашлось. Попробуй написать название по-английски.', 'Nothing found. Try the English name.'),
+  cat_source: L('Источник: открытый список Hipo university-domains-list (MIT) + вузы Узбекистана от Noventis.', 'Source: open Hipo university-domains-list (MIT) + Uzbek universities added by Noventis.'),
+  cat_all_link: L('Все вузы мира →', 'All universities →'),
+
+  // избранное
+  fav_title: L('Избранные вузы', 'Saved universities'),
+  fav_empty: L('Пока пусто. Нажми ♡ рядом с вузом в результате теста или в каталоге.', 'Nothing yet. Tap ♡ next to a university in your results or the catalogue.'),
+  fav_added: L('Добавлено в избранное', 'Saved'), fav_removed: L('Убрано из избранного', 'Removed'),
+  fav_login: L('Войди, чтобы сохранять вузы', 'Log in to save universities'),
+  fav_limit: L('В избранном уже 300 вузов — убери лишние', 'You already have 300 saved — remove some first'),
+  fav_add: L('В избранное', 'Save'), fav_del: L('Убрать из избранного', 'Remove'),
 };
 
 let LANG = (() => { try { return localStorage.getItem('kj_lang') || 'ru'; } catch { return 'ru'; } })();
@@ -146,6 +169,55 @@ function toast(msg) {
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove('show'), 2800);
 }
+
+// Название страны по коду ISO (UZ → Узбекистан) или подпись региона из REGIONS (us → США / Канада)
+function placeName(code) {
+  if (/^[A-Z]{2}$/.test(code)) {
+    try { return new Intl.DisplayNames([LANG], { type: 'region' }).of(code); } catch { return code; }
+  }
+  return typeof REGIONS !== 'undefined' && REGIONS[code] ? tx(REGIONS[code]) : code;
+}
+
+// ---------- избранные вузы ----------
+// Ключ вуза — название + место (код страны или региона). Список грузится один раз на страницу.
+const favKey = (name, place) => place + '|' + name;
+let FAVS = null;
+async function loadFavs() {
+  if (FAVS) return FAVS;
+  const r = ME ? await api('/api/favorites') : { ok: false };
+  FAVS = new Map((r.ok ? r.data.favorites : []).map(f => [favKey(f.name, f.place), f]));
+  return FAVS;
+}
+const heart = (name, place, web = '') => {
+  const on = FAVS && FAVS.has(favKey(name, place));
+  return `<button class="heart ${on ? 'on' : ''}" type="button" data-name="${escapeHtml(name)}" data-place="${escapeHtml(place)}" data-web="${escapeHtml(web)}"
+    aria-label="${t(on ? 'fav_del' : 'fav_add')}" title="${t(on ? 'fav_del' : 'fav_add')}">${on ? '♥' : '♡'}</button>`;
+};
+// все сердечки на странице обновляются одинаково
+function paintHearts() {
+  document.querySelectorAll('.heart').forEach(b => {
+    const on = FAVS && FAVS.has(favKey(b.dataset.name, b.dataset.place));
+    b.classList.toggle('on', !!on);
+    b.textContent = on ? '♥' : '♡';
+    b.title = t(on ? 'fav_del' : 'fav_add');
+    b.setAttribute('aria-label', b.title);
+  });
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('.heart');
+  if (!b) return;
+  e.preventDefault();
+  if (!ME) { toast(t('fav_login')); setTimeout(() => location.href = '/auth?next=' + encodeURIComponent(location.pathname + location.search), 900); return; }
+  await loadFavs();
+  const { name, place, web } = b.dataset, key = favKey(name, place);
+  const had = FAVS.has(key);
+  const r = await api('/api/favorites', { method: had ? 'DELETE' : 'POST', body: { name, place, web } });
+  if (!r.ok) return toast(t({ too_many: 'err_too_many', fav_limit: 'fav_limit' }[r.data.error] || 'err_server'));
+  if (had) FAVS.delete(key); else FAVS.set(key, { name, place, web });
+  paintHearts();
+  toast(t(had ? 'fav_removed' : 'fav_added'));
+  document.dispatchEvent(new CustomEvent('favchange'));
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.lang-toggle button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));

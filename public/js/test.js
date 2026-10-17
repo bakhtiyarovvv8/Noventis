@@ -240,11 +240,12 @@ function renderUniversity(s) {
     const pref = F.world.filter(([, r]) => regions.includes(r));
     const rest = F.world.filter(([, r]) => !regions.includes(r));
     const unis = [...pref, ...rest].slice(0, 7)
-      .map(([n, r]) => `<li class="${regions.includes(r) ? 'pref' : ''}">${n}<span class="tag">${tx(REGIONS[r])}</span></li>`).join('');
+      .map(([n, r]) => `<li class="${regions.includes(r) ? 'pref' : ''}">${n}<span class="tag">${tx(REGIONS[r])}</span>${heart(n, r)}</li>`).join('');
     return fieldCard(f, i + 1, `<div class="cols">
       <div><h4>${t('where_strong')}</h4>${li(F.hubs.map(tx))}</div>
       <div><h4>${t('unis_world')}${pref.length ? ` · <span style="color:var(--gold)">${t('your_regions')}</span>` : ''}</h4><ul class="list">${unis}</ul></div>
-      <div><h4>${t('unis_uz')}</h4>${li(F.uz)}</div>
+      <div><h4>${t('unis_uz')}</h4><ul class="list">${F.uz.map(n => `<li>${n}<span class="tag"></span>${heart(n, 'uz')}</li>`).join('')}</ul>
+        <p class="note"><a href="/catalog" style="color:var(--gold)">${t('cat_all_link')}</a></p></div>
     </div>`);
   }).join('');
 
@@ -397,6 +398,7 @@ document.addEventListener('langchange', () => {
 document.addEventListener('DOMContentLoaded', async () => {
   const me = await loadMe();
   if (!me) { location.href = '/auth?next=' + encodeURIComponent(location.pathname + location.search); return; }
+  await loadFavs();
   const rid = params.get('result');
   if (rid) {
     const r = await api('/api/results/' + encodeURIComponent(rid));

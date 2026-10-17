@@ -54,6 +54,16 @@ const ready = db.batch([
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   'CREATE INDEX IF NOT EXISTS results_user ON results(user_id)',
+  // избранные вузы: place — код страны (UZ) или региона (us)
+  `CREATE TABLE IF NOT EXISTS favorites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    place TEXT NOT NULL,
+    web TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (user_id, name, place)
+  )`,
 ], 'write');
 
 const hashPassword = (password, salt) => new Promise((resolve, reject) =>
@@ -215,6 +225,27 @@ async function api(req, res, url) {
     const r = await run('INSERT INTO results (user_id, category, answers, summary) VALUES (?, ?, ?, ?)',
       user.id, category, JSON.stringify(answers), JSON.stringify(summary));
     return json(res, 201, { id: Number(r.lastInsertRowid) });
+  }
+
+  if (route === 'GET /api/favorites') {
+    const rows = await all('SELECT name, place, web, created_at FROM favorites WHERE user_id = ? ORDER BY id DESC', user.id);
+    return json(res, 200, { favorites: rows });
+  }
+
+  if (route === 'POST /api/favorites' || route === 'DELETE /api/favorites') {
+    const body = await readBody(req);
+    const name = str(body.name).trim().slice(0, 200), place = str(body.place).trim().slice(0, 20);
+    if (!name || !place) return json(res, 400, { error: 'bad_json' });
+    if (req.method === 'DELETE') {
+      await run('DELETE FROM favorites WHERE user_id = ? AND name = ? AND place = ?', user.id, name, place);
+      return json(res, 200, { ok: true });
+    }
+    // ссылку храним, только если это http(s)
+    const web = /^https?:\/\/[^\s"'<>]{1,300}$/i.test(str(body.web)) ? str(body.web) : '';
+    const n = await one('SELECT COUNT(*) AS c FROM favorites WHERE user_id = ?', user.id);
+    if (Number(n.c) >= 300) return json(res, 400, { error: 'fav_limit' });
+    await run('INSERT OR IGNORE INTO favorites (user_id, name, place, web) VALUES (?, ?, ?, ?)', user.id, name, place, web);
+    return json(res, 201, { ok: true });
   }
 
   const m = url.pathname.match(/^\/api\/results\/(\d{1,12})$/);

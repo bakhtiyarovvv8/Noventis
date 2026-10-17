@@ -59,7 +59,15 @@
                 <button class="btn btn-ghost del">${t('delete')}</button>
               </div>
             </div>`).join('') : `<div class="empty">${t('no_results')}</div>`}
-        </div>`;
+        </div>
+        <span class="kicker" id="favorites" style="margin-top:56px">${t('fav_title')}</span>
+        <div class="uni-list" style="margin-top:18px">
+          ${FAVS.size ? [...FAVS.values()].map(f => `<div class="uni"><div class="meta"><b>${escapeHtml(f.name)}</b><span>${escapeHtml(placeName(f.place))}</span></div>
+            ${f.web ? `<a class="site" href="${escapeHtml(f.web)}" target="_blank" rel="noopener noreferrer">${t('cat_site')} ↗</a>` : ''}${heart(f.name, f.place, f.web)}</div>`).join('')
+            : `<div class="empty">${t('fav_empty')}</div>`}
+        </div>
+        <div class="more-row" style="justify-content:flex-start"><a class="btn btn-ghost" href="/catalog">${t('cat_all_link')}</a>
+          <a class="btn btn-ghost" href="/tools">${t('nav_tools')} →</a></div>`;
       app.querySelectorAll('.del').forEach(b => b.onclick = async () => {
         const item = b.closest('.res-item');
         await api('/api/results/' + item.dataset.id, { method: 'DELETE' });
@@ -73,9 +81,11 @@
     document.addEventListener('langchange', () => render(false));
     document.addEventListener('DOMContentLoaded', async () => {
       if (!await loadMe()) { location.href = '/auth?next=/profile'; return; }
+      await loadFavs();
       const r = await api('/api/results');
       results = r.data.results || [];
       render(true);
+      if (location.hash === '#favorites') document.getElementById('favorites').scrollIntoView({ behavior: 'smooth' });
     });
   </script>
 </body>
