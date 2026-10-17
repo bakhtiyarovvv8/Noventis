@@ -190,6 +190,28 @@ const UI = {
   cr_back: L('← Все профессии', '← All careers'), cr_more: L('Подробнее →', 'Details →'),
   cr_unis: L('Сильные вузы', 'Top universities'), cr_links: L('Дальше', 'Next steps'),
 
+  // родители и учителя
+  fm_title: L('Родители и учителя', 'Parents & teachers'),
+  fm_lead: L('Ученик сам решает, кому показать результаты. Родитель видит результаты ребёнка по коду, учитель — результаты своего класса.', 'Students decide who sees their results. Parents use a code; teachers see their own class.'),
+  fm_student: L('Я ученик', 'I’m a student'), fm_parent: L('Я родитель', 'I’m a parent'), fm_teacher: L('Я учитель', 'I’m a teacher'),
+  fm_my_code: L('Мой код для родителя', 'My code for parents'),
+  fm_code_hint: L('Отправь этот код родителю — он увидит твои результаты (только чтение). Новый код отменяет старый.', 'Send this code to a parent — they’ll see your results (read-only). A new code replaces the old one.'),
+  fm_make_code: L('Создать код', 'Create code'), fm_new_code: L('Новый код', 'New code'), fm_copy: L('Скопировать', 'Copy'), fm_copied: L('Код скопирован', 'Code copied'),
+  fm_who: L('Кто видит мои результаты', 'Who can see my results'), fm_nobody: L('Пока никто', 'Nobody yet'),
+  fm_revoke: L('Закрыть доступ', 'Revoke'), fm_join: L('Вступить в класс по коду учителя', 'Join a class with the teacher’s code'),
+  fm_my_classes: L('Мои классы', 'My classes'), fm_leave: L('Выйти', 'Leave'), fm_teacher_of: L('учитель', 'teacher'),
+  fm_add_kid: L('Код ребёнка', 'Child’s code'), fm_add: L('Добавить', 'Add'), fm_kids: L('Мои дети', 'My children'),
+  fm_no_kids: L('Попроси ребёнка создать код в разделе «Я ученик» на этой странице.', 'Ask your child to create a code under “I’m a student” on this page.'),
+  fm_remove: L('Убрать', 'Remove'), fm_new_class: L('Название класса, например 11-А', 'Class name, e.g. 11-A'),
+  fm_create: L('Создать класс', 'Create class'), fm_class_code: L('Код класса для учеников', 'Class code for students'),
+  fm_members: L('учеников', 'students'), fm_no_members: L('Пока никто не вступил. Отправь ученикам код класса.', 'No one has joined yet. Send students the class code.'),
+  fm_delete_class: L('Удалить класс', 'Delete class'), fm_latest: L('Последние результаты', 'Latest results'),
+  fm_no_res: L('Тестов пока нет', 'No tests yet'), fm_all_res: L('Все результаты →', 'All results →'),
+  fm_results_of: L('Результаты', 'Results of'), fm_back: L('← Родители и учителя', '← Parents & teachers'),
+  err_bad_code: L('Код не найден — проверь буквы и цифры', 'Code not found — check the letters and digits'),
+  err_own_code: L('Это твой собственный код', 'That’s your own code'),
+  fm_viewing: L('Просмотр результата ученика', 'Viewing a student’s result'),
+
   // навигация внутренних страниц и хаб инструментов
   nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'),
   tools_title: L('Инструменты', 'Tools'),

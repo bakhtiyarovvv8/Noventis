@@ -367,6 +367,18 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
 .cost-cell span { font-size: 13px; color: var(--ink-3); }
 .cost-cell.big { border-color: rgba(226,189,127,.5); background: rgba(226,189,127,.08); }
 .cost-cell.big b { color: var(--gold-2); font-size: 28px; }
+/* родители и учителя */
+.code-box { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.code-box b { font-family: var(--display); font-weight: 500; font-size: 30px; letter-spacing: .12em; color: var(--gold-2); margin-right: 8px; }
+.code-inline { font-family: var(--display); font-weight: 500; letter-spacing: .1em; color: var(--gold-2); }
+.code-form { display: flex; gap: 10px; }
+.code-form .input { max-width: 360px; text-transform: uppercase; }
+.code-form .input[name=name] { text-transform: none; }
+.class-table { display: grid; }
+.class-row { display: grid; grid-template-columns: 1.1fr 1.6fr 1fr auto; gap: 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.class-row:last-child { border-bottom: 0; }
+.class-row span { color: var(--ink-2); }
+
 /* профессии */
 .tool.career { min-height: 0; }
 .tool.career:hover { transform: none; }
@@ -522,6 +534,10 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
   .vs-row { grid-template-columns: 1fr 1fr; gap: 10px 14px; }
   .vs-row h4 { grid-column: 1 / -1; }
   .vs-row .big-num { font-size: 18px; }
+  .class-row { grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+  .class-row b { grid-column: 1 / -1; }
+  .code-form { flex-wrap: wrap; }
+  .code-box b { font-size: 24px; }
 }
 /* печать / «Сохранить как PDF»: светлый отчёт без меню и кнопок */
 @media print {

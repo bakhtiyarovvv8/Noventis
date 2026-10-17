@@ -89,6 +89,7 @@
             : `<div class="empty">${t('fav_empty')}</div>`}
         </div>
         <div class="more-row" style="justify-content:flex-start"><a class="btn btn-ghost" href="/catalog">${t('cat_all_link')}</a>
+          <a class="btn btn-ghost" href="/family">${t('fm_title')}</a>
           <a class="btn btn-ghost" href="/tools">${t('nav_tools')} →</a></div>`;
       app.querySelectorAll('.del').forEach(b => b.onclick = async () => {
         const item = b.closest('.res-item');

@@ -102,6 +102,44 @@ test('дедлайны и план: только свои данные, пров
   assert.equal((await call(LOCAL, P, { method: 'PUT', cookie: a.cookie, body: { checks: ['<script>'] } })).status, 400);
 });
 
+test('родители и учителя: доступ только по коду, отзыв, классы', async () => {
+  const reg = async p => (await call(LOCAL, '/api/register', { method: 'POST', body: { name: 'Тест ' + p, email: uniq(p), password: '12345678' } })).cookie;
+  const kid = await reg('kid'), mom = await reg('mom'), stranger = await reg('str'), teacher = await reg('tch');
+  const kidId = (await call(LOCAL, '/api/me', { cookie: kid })).data.user.id;
+  const res = await call(LOCAL, '/api/results', { method: 'POST', cookie: kid, body: { category: 'work', answers: {}, summary: { fields: [{ id: 'it', pct: 90 }] } } });
+
+  // без кода — ничего не видно
+  assert.equal((await call(LOCAL, `/api/view/${kidId}/results`, { cookie: mom })).status, 404);
+  const code = (await call(LOCAL, '/api/family/code', { method: 'POST', cookie: kid })).data.code;
+  assert.match(code, /^[A-Z2-9]{8}$/);
+  assert.equal((await call(LOCAL, '/api/family/watch', { method: 'POST', cookie: kid, body: { code } })).status, 400, 'свой код нельзя');
+  assert.equal((await call(LOCAL, '/api/family/watch', { method: 'POST', cookie: mom, body: { code: 'WRONG123' } })).status, 404);
+  assert.equal((await call(LOCAL, '/api/family/watch', { method: 'POST', cookie: mom, body: { code: code.toLowerCase().replace(/(.{4})/, '$1-') } })).status, 200, 'регистр и дефис не мешают');
+  assert.equal((await call(LOCAL, `/api/view/${kidId}/results`, { cookie: mom })).data.results.length, 1);
+  assert.equal((await call(LOCAL, `/api/view/${kidId}/results/${res.data.id}`, { cookie: mom })).data.summary.fields[0].id, 'it');
+  assert.equal((await call(LOCAL, `/api/view/${kidId}/results`, { cookie: stranger })).status, 404, 'посторонний не видит');
+  assert.equal((await call(LOCAL, '/api/family', { cookie: kid })).data.watchers.length, 1);
+
+  // ученик отзывает доступ
+  const momId = (await call(LOCAL, '/api/me', { cookie: mom })).data.user.id;
+  await call(LOCAL, '/api/family/watch', { method: 'DELETE', cookie: kid, body: { viewer: momId } });
+  assert.equal((await call(LOCAL, `/api/view/${kidId}/results`, { cookie: mom })).status, 404);
+
+  // класс учителя
+  const cls = await call(LOCAL, '/api/classes', { method: 'POST', cookie: teacher, body: { name: '11-А' } });
+  assert.equal(cls.status, 201);
+  assert.equal((await call(LOCAL, '/api/classes/join', { method: 'POST', cookie: kid, body: { code: cls.data.code } })).status, 200);
+  const fam = (await call(LOCAL, '/api/family', { cookie: teacher })).data;
+  assert.equal(fam.classes[0].members.length, 1);
+  assert.equal(fam.classes[0].members[0].results.length, 1);
+  assert.equal((await call(LOCAL, `/api/view/${kidId}/results`, { cookie: teacher })).status, 200);
+  // посторонний не удалит чужой класс; ученик выходит — доступ пропадает
+  await call(LOCAL, `/api/classes/${cls.data.id}`, { method: 'DELETE', cookie: stranger });
+  assert.equal((await call(LOCAL, '/api/family', { cookie: teacher })).data.classes.length, 1);
+  await call(LOCAL, `/api/classes/${cls.data.id}`, { method: 'DELETE', cookie: kid });
+  assert.equal((await call(LOCAL, `/api/view/${kidId}/results`, { cookie: teacher })).status, 404);
+});
+
 test('проверка входящих данных: 400 вместо падения', async () => {
   assert.equal((await call(LOCAL, '/api/login', { method: 'POST', body: '{oops' })).status, 400);
   assert.equal((await call(LOCAL, '/api/register', { method: 'POST', body: { name: { a: 1 }, email: 5, password: [1] } })).status, 400);

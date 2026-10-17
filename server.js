@@ -77,7 +77,54 @@ const ready = db.batch([
     checks TEXT NOT NULL DEFAULT '[]',
     PRIMARY KEY (user_id, result_id)
   )`,
+  // доступ родителей и учителей: ученик сам выдаёт код и может отозвать доступ
+  `CREATE TABLE IF NOT EXISTS share_codes (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    code TEXT NOT NULL UNIQUE
+  )`,
+  `CREATE TABLE IF NOT EXISTS watchers (
+    viewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (viewer_id, student_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS classes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS class_members (
+    class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (class_id, user_id)
+  )`,
 ], 'write');
+
+// Коды доступа: 8 символов без похожих (0/O, 1/I/L)
+const CODE_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const newCode = () => Array.from(crypto.randomBytes(8), b => CODE_ABC[b % CODE_ABC.length]).join('');
+const normCode = v => str(v).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+
+// Может ли viewer смотреть результаты student: родитель по коду или учитель его класса
+async function canView(viewerId, studentId) {
+  if (viewerId === studentId) return true;
+  return !!(await one(`SELECT 1 FROM watchers WHERE viewer_id = ? AND student_id = ?
+    UNION SELECT 1 FROM class_members m JOIN classes c ON c.id = m.class_id WHERE c.owner_id = ? AND m.user_id = ?`,
+    viewerId, studentId, viewerId, studentId));
+}
+
+// Последние 20 результатов каждого ученика — одним запросом, а не по запросу на ученика
+async function resultsOfMany(ids) {
+  const out = new Map(ids.map(id => [Number(id), []]));
+  if (!ids.length) return out;
+  const rows = await all(`SELECT id, user_id, category, summary, created_at FROM (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY id DESC) AS rn FROM results
+      WHERE user_id IN (${ids.map(() => '?').join(',')})) WHERE rn <= 20 ORDER BY id DESC`, ...ids.map(Number));
+  for (const r of rows) out.get(Number(r.user_id)).push({ id: r.id, category: r.category, summary: JSON.parse(r.summary), created_at: r.created_at });
+  return out;
+}
+const resultsOf = async id => (await resultsOfMany([id])).get(Number(id));
 
 const hashPassword = (password, salt) => new Promise((resolve, reject) =>
   crypto.scrypt(password, salt, 64, { N: 16384, r: 8, p: 1 }, (e, key) => e ? reject(e) : resolve(key.toString('hex'))));
@@ -296,6 +343,102 @@ async function api(req, res, url) {
       await run('INSERT OR IGNORE INTO deadline_follows (user_id, did) VALUES (?, ?)', user.id, did);
     }
     return json(res, 200, { ok: true });
+  }
+
+  // ---------- родители и учителя ----------
+  if (route === 'GET /api/family') {
+    const code = await one('SELECT code FROM share_codes WHERE user_id = ?', user.id);
+    const watchers = await all('SELECT u.id, u.name FROM watchers w JOIN users u ON u.id = w.viewer_id WHERE w.student_id = ?', user.id);
+    const kids = await all('SELECT u.id, u.name FROM watchers w JOIN users u ON u.id = w.student_id WHERE w.viewer_id = ?', user.id);
+    const joined = await all('SELECT c.id, c.name, u.name AS owner FROM class_members m JOIN classes c ON c.id = m.class_id JOIN users u ON u.id = c.owner_id WHERE m.user_id = ?', user.id);
+    const own = await all('SELECT id, name, code FROM classes WHERE owner_id = ? ORDER BY id', user.id);
+    const members = own.length ? await all(`SELECT m.class_id, u.id, u.name FROM class_members m JOIN users u ON u.id = m.user_id
+      WHERE m.class_id IN (${own.map(() => '?').join(',')}) ORDER BY u.name`, ...own.map(c => c.id)) : [];
+    const byUser = await resultsOfMany([...new Set([...kids, ...members].map(x => Number(x.id)))]);
+    for (const k of kids) k.results = byUser.get(Number(k.id));
+    for (const c of own) c.members = members.filter(m => Number(m.class_id) === Number(c.id))
+      .map(m => ({ id: m.id, name: m.name, results: byUser.get(Number(m.id)) }));
+    return json(res, 200, { code: code ? code.code : null, watchers, kids, joined, classes: own });
+  }
+
+  if (route === 'POST /api/family/code') {
+    // новый код — старый перестаёт работать; уже подключённые родители остаются
+    for (let i = 0; i < 5; i++) {
+      try {
+        const code = newCode();
+        await run(`INSERT INTO share_codes (user_id, code) VALUES (?, ?)
+          ON CONFLICT (user_id) DO UPDATE SET code = excluded.code`, user.id, code);
+        return json(res, 200, { code });
+      } catch { /* совпал с чужим кодом — пробуем ещё */ }
+    }
+    return json(res, 500, { error: 'server_error' });
+  }
+
+  if (route === 'POST /api/family/watch') {
+    const code = normCode((await readBody(req)).code);
+    const s = code.length === 8 && await one('SELECT user_id FROM share_codes WHERE code = ?', code);
+    if (!s) return json(res, 404, { error: 'bad_code' });
+    if (Number(s.user_id) === Number(user.id)) return json(res, 400, { error: 'own_code' });
+    const n = await one('SELECT COUNT(*) AS c FROM watchers WHERE viewer_id = ?', user.id);
+    if (Number(n.c) >= 30) return json(res, 400, { error: 'too_many' });
+    await run('INSERT OR IGNORE INTO watchers (viewer_id, student_id) VALUES (?, ?)', user.id, Number(s.user_id));
+    return json(res, 200, { ok: true });
+  }
+
+  if (route === 'DELETE /api/family/watch') {
+    // родитель убирает ребёнка (student) или ученик отзывает доступ родителя (viewer)
+    const { student, viewer } = await readBody(req);
+    if (Number.isInteger(student)) await run('DELETE FROM watchers WHERE viewer_id = ? AND student_id = ?', user.id, student);
+    if (Number.isInteger(viewer)) await run('DELETE FROM watchers WHERE viewer_id = ? AND student_id = ?', viewer, user.id);
+    return json(res, 200, { ok: true });
+  }
+
+  if (route === 'POST /api/classes') {
+    const name = str((await readBody(req)).name).trim().slice(0, 60);
+    if (name.length < 2) return json(res, 400, { error: 'name_short' });
+    const n = await one('SELECT COUNT(*) AS c FROM classes WHERE owner_id = ?', user.id);
+    if (Number(n.c) >= 20) return json(res, 400, { error: 'too_many' });
+    for (let i = 0; i < 5; i++) {
+      try {
+        const code = newCode();
+        const r = await run('INSERT INTO classes (owner_id, name, code) VALUES (?, ?, ?)', user.id, name, code);
+        return json(res, 201, { id: Number(r.lastInsertRowid), code });
+      } catch { /* код занят — ещё раз */ }
+    }
+    return json(res, 500, { error: 'server_error' });
+  }
+
+  if (route === 'POST /api/classes/join') {
+    const code = normCode((await readBody(req)).code);
+    const c = code.length === 8 && await one('SELECT id, owner_id FROM classes WHERE code = ?', code);
+    if (!c) return json(res, 404, { error: 'bad_code' });
+    if (Number(c.owner_id) === Number(user.id)) return json(res, 400, { error: 'own_code' });
+    const n = await one('SELECT COUNT(*) AS c FROM class_members WHERE class_id = ?', c.id);
+    if (Number(n.c) >= 200) return json(res, 400, { error: 'too_many' });
+    await run('INSERT OR IGNORE INTO class_members (class_id, user_id) VALUES (?, ?)', c.id, user.id);
+    return json(res, 200, { ok: true });
+  }
+
+  const cm = url.pathname.match(/^\/api\/classes\/(\d{1,12})$/);
+  if (cm && req.method === 'DELETE') {
+    // владелец удаляет класс, ученик — выходит из него
+    const id = Number(cm[1]);
+    if (await one('SELECT 1 FROM classes WHERE id = ? AND owner_id = ?', id, user.id)) {
+      await run('DELETE FROM class_members WHERE class_id = ?', id);
+      await run('DELETE FROM classes WHERE id = ?', id);
+    } else await run('DELETE FROM class_members WHERE class_id = ? AND user_id = ?', id, user.id);
+    return json(res, 200, { ok: true });
+  }
+
+  const vm = url.pathname.match(/^\/api\/view\/(\d{1,12})\/results(?:\/(\d{1,12}))?$/);
+  if (vm && req.method === 'GET') {
+    const sid = Number(vm[1]);
+    if (!await canView(Number(user.id), sid)) return json(res, 404, { error: 'not_found' });
+    const student = await one('SELECT id, name FROM users WHERE id = ?', sid);
+    if (!vm[2]) return json(res, 200, { student, results: await resultsOf(sid) });
+    const r = await one('SELECT * FROM results WHERE id = ? AND user_id = ?', Number(vm[2]), sid);
+    if (!r) return json(res, 404, { error: 'not_found' });
+    return json(res, 200, { ...r, student, answers: JSON.parse(r.answers), summary: JSON.parse(r.summary) });
   }
 
   const pm = url.pathname.match(/^\/api\/plan\/(\d{1,12})$/);

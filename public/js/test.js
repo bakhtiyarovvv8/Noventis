@@ -391,11 +391,13 @@ function renderResult() {
     .map(k => `<a class="btn btn-ghost" href="/test?cat=${k}">${tx(CATEGORIES[k].title)} →</a>`).join('');
   const date = (current.created_at ? new Date(current.created_at.replace(' ', 'T') + 'Z') : new Date())
     .toLocaleDateString(LANG === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  app.innerHTML = `<div class="print-head"><b>Noventis<span>.</span></b><span>${t('report_for')} ${escapeHtml(ME.name)} · ${t('report_date')}: ${date}</span></div>`
+  const who = current.student ? current.student.name : ME.name;
+  app.innerHTML = `<div class="print-head"><b>Noventis<span>.</span></b><span>${t('report_for')} ${escapeHtml(who)} · ${t('report_date')}: ${date}</span></div>`
+    + (current.student ? `<div class="alert">${t('fm_viewing')}: <b>${escapeHtml(who)}</b> · <a href="/family?student=${current.student.id}" style="color:var(--gold)">${t('fm_all_res')}</a></div>` : '')
     + html + `<div class="result-actions">
       <button class="btn btn-gold" id="pdf">${t('pdf_btn')}</button>
       <button class="btn btn-ghost" id="share">${t('share_btn')} ↗</button>
-      ${current.category === 'prep' && current.id ? `<a class="btn btn-ghost" href="/plan?result=${current.id}">${t('pl_open')} →</a>` : ''}
+      ${current.category === 'prep' && current.id && !current.student ? `<a class="btn btn-ghost" href="/plan?result=${current.id}">${t('pl_open')} →</a>` : ''}
       <a class="btn btn-ghost" href="/test?cat=${current.category}">${t('retake')}</a>
       <a class="btn btn-ghost" href="/profile">${t('to_profile')}</a>${others}</div>`;
   document.getElementById('pdf').onclick = () => { toast(t('pdf_hint')); setTimeout(() => print(), 600); };
@@ -492,9 +494,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const me = await loadMe();
   if (!me) { location.href = '/auth?next=' + encodeURIComponent(location.pathname + location.search); return; }
   await loadFavs();
-  const rid = params.get('result');
+  const rid = params.get('result'), sid = params.get('student');
   if (rid) {
-    const r = await api('/api/results/' + encodeURIComponent(rid));
+    // родитель или учитель смотрит результат ученика — только чтение
+    const r = await api(sid ? `/api/view/${encodeURIComponent(sid)}/results/${encodeURIComponent(rid)}` : '/api/results/' + encodeURIComponent(rid));
     if (r.ok && r.data.category === 'english') { location.replace('/english?result=' + rid); return; }
     if (r.ok) {
       current = r.data;
