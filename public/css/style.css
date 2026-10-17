@@ -367,6 +367,12 @@ input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border: 0; bord
 .cost-cell span { font-size: 13px; color: var(--ink-3); }
 .cost-cell.big { border-color: rgba(226,189,127,.5); background: rgba(226,189,127,.08); }
 .cost-cell.big b { color: var(--gold-2); font-size: 28px; }
+/* Telegram в кабинете */
+.tg-card { margin: 0; }
+.tg-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.tg-row > div { flex: 1 1 260px; }
+.tg-row b { font-family: var(--display); font-weight: 500; font-size: 18px; }
+
 /* родители и учителя */
 .code-box { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .code-box b { font-family: var(--display); font-weight: 500; font-size: 30px; letter-spacing: .12em; color: var(--gold-2); margin-right: 8px; }

@@ -1,0 +1,19 @@
+# Ежедневные напоминания Telegram-бота: каждый день в 09:00 по Ташкенту вызывает /api/cron/daily.
+# В настройках репозитория (Settings → Secrets → Actions) нужны секреты SITE_URL и CRON_KEY.
+name: daily-reminders
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Разбудить сервер и разослать напоминания
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_KEY: ${{ secrets.CRON_KEY }}
+        run: |
+          # бесплатный Render спит — первый запрос будит его, ждём до 2 минут
+          curl -s -m 120 "$SITE_URL/api/health" || true
+          curl -s -m 120 -X POST -H "x-cron-key: $CRON_KEY" "$SITE_URL/api/cron/daily"

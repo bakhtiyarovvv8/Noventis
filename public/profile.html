@@ -28,7 +28,16 @@
   <script src="/js/common.js"></script>
   <script src="/js/deadlines-data.js"></script>
   <script>
-    let results = [], follows = [];
+    let results = [], follows = [], TG = { enabled: false, linked: false };
+
+    function tgBlock() {
+      return `<article class="card tg-card"><div class="tg-row">
+        <div><b>${t('tg_title')}</b><p class="note" style="margin:4px 0 0">${TG.enabled ? t('tg_lead') : t('tg_soon')}</p></div>
+        ${!TG.enabled ? `<a class="btn btn-ghost" href="/deadlines">${t('dl_title')} →</a>`
+          : TG.linked ? `<span class="chip gold">${t('tg_on')}</span><button class="btn btn-ghost" id="tgOff">${t('tg_off')}</button>`
+          : `<button class="btn btn-gold" id="tgOn">${t('tg_connect')}</button>`}
+      </div></article>`;
+    }
 
     // три ближайших дедлайна, за которыми следит пользователь
     function soonBlock() {
@@ -66,6 +75,7 @@
           ${Object.entries(CATEGORIES).map(([k, c]) => `<a href="/test?cat=${k}"><img src="${c.img}" alt="">${tx(c.title)} →</a>`).join('')}
         </div>
         ${soonBlock()}
+        <div style="margin-bottom:56px">${tgBlock()}</div>
         <span class="kicker">${t('my_results')}</span>
         <div class="res-list" style="margin-top:18px">
           ${results.length ? results.map(r => `
@@ -98,6 +108,16 @@
           results = results.filter(r => r.id !== +item.dataset.id); render(false);
         }});
       });
+      const on = document.getElementById('tgOn'), off = document.getElementById('tgOff');
+      if (on) on.onclick = async () => {
+        // окно открываем сразу по клику, иначе браузер его заблокирует
+        const w = window.open('', '_blank');
+        const r = await api('/api/tg/link', { method: 'POST', body: { lang: LANG } });
+        if (!r.ok) { if (w) w.close(); return toast(t('err_server')); }
+        if (w) w.location = r.data.url; else location.href = r.data.url;
+        toast(t('tg_opened'));
+      };
+      if (off) off.onclick = async () => { await api('/api/tg', { method: 'DELETE' }); TG.linked = false; render(false); };
       // сравнение: ровно два результата одного теста
       const go = document.getElementById('cmpGo');
       app.querySelectorAll('.cmp').forEach(c => c.onchange = () => {
@@ -117,8 +137,9 @@
     document.addEventListener('DOMContentLoaded', async () => {
       if (!await loadMe()) { location.href = '/auth?next=/profile'; return; }
       await loadFavs();
-      const d = await api('/api/deadlines');
+      const [d, tg] = await Promise.all([api('/api/deadlines'), api('/api/tg')]);
       if (d.ok) follows = d.data.follows;
+      if (tg.ok) TG = tg.data;
       const r = await api('/api/results');
       results = r.data.results || [];
       render(true);

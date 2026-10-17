@@ -140,6 +140,48 @@ test('родители и учителя: доступ только по код�
   assert.equal((await call(LOCAL, `/api/view/${kidId}/results`, { cookie: teacher })).status, 404);
 });
 
+test('Telegram-бот: привязка по ссылке, подпись вебхука, рассылка, отключение', async () => {
+  // поддельный api.telegram.org: запоминает отправленные сообщения
+  const sent = [];
+  const fake = require('node:http').createServer((req, res) => {
+    let b = ''; req.on('data', c => b += c); req.on('end', () => { sent.push(JSON.parse(b || '{}')); res.end('{"ok":true}'); });
+  }).listen(3310);
+  try {
+    const BOT = await startServer(3303, { TG_BOT_TOKEN: 'T', TG_BOT_NAME: 'noventis_test_bot', TG_API: 'http://localhost:3310', TG_WEBHOOK_SECRET: 'hook', CRON_KEY: 'cron' });
+    const hook = (text, secret = 'hook') => call(BOT, '/api/tg/webhook', { method: 'POST', headers: { 'x-telegram-bot-api-secret-token': secret }, body: { message: { chat: { id: 777 }, from: { language_code: 'ru' }, text } } });
+    const u = (await call(BOT, '/api/register', { method: 'POST', body: { name: 'Тест', email: uniq('tg'), password: '12345678' } })).cookie;
+    assert.deepEqual((await call(BOT, '/api/tg', { cookie: u })).data, { enabled: true, linked: false });
+    const { url } = (await call(BOT, '/api/tg/link', { method: 'POST', cookie: u, body: { lang: 'ru' } })).data;
+    assert.match(url, /^https:\/\/t\.me\/noventis_test_bot\?start=[A-Za-z0-9]+$/);
+    const code = url.split('=')[1];
+
+    assert.equal((await hook('/start ' + code, 'wrong')).status, 403, 'без подписи Telegram — отказ');
+    assert.equal((await hook('/start ' + code)).status, 200);
+    assert.match(sent.at(-1).text, /Готово/);
+    assert.equal(sent.at(-1).chat_id, '777');
+    assert.equal((await call(BOT, '/api/tg', { cookie: u })).data.linked, true);
+    await hook('/start ' + code);
+    assert.match(sent.at(-1).text, /устарела/, 'код одноразовый');
+
+    // следим за всеми дедлайнами; письмо будет, если у какого-то сегодня осталось 30/7/1 день
+    const vm = require('node:vm'), ctx = { L: (ru, en) => ({ ru, en }) };
+    vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'deadlines-data.js'), 'utf8') + ';this.D=DEADLINES;this.left=daysLeft;', ctx);
+    for (const d of ctx.D) await call(BOT, '/api/deadlines', { method: 'POST', cookie: u, body: { id: d.id } });
+    await hook('/deadlines');
+    assert.match(sent.at(-1).text, /ближайшие дедлайны/);
+    assert.equal((await call(BOT, '/api/cron/daily', { method: 'POST' })).status, 403);
+    const daily = await call(BOT, '/api/cron/daily', { method: 'POST', headers: { 'x-cron-key': 'cron' } });
+    const due = ctx.D.some(d => [30, 7, 1].includes(ctx.left(d))) || new Date().getDay() === 1;
+    assert.equal(daily.data.sent, due ? 1 : 0);
+
+    await hook('/stop');
+    assert.equal((await call(BOT, '/api/tg', { cookie: u })).data.linked, false);
+    // без токена бот выключен
+    assert.equal((await call(LOCAL, '/api/tg/webhook', { method: 'POST', headers: { 'x-telegram-bot-api-secret-token': 'hook' }, body: {} })).status, 403);
+  } finally { fake.close(); }
+});
+
 test('проверка входящих данных: 400 вместо падения', async () => {
   assert.equal((await call(LOCAL, '/api/login', { method: 'POST', body: '{oops' })).status, 400);
   assert.equal((await call(LOCAL, '/api/register', { method: 'POST', body: { name: { a: 1 }, email: 5, password: [1] } })).status, 400);

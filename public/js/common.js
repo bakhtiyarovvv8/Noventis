@@ -212,6 +212,13 @@ const UI = {
   err_own_code: L('Это твой собственный код', 'That’s your own code'),
   fm_viewing: L('Просмотр результата ученика', 'Viewing a student’s result'),
 
+  // Telegram-бот
+  tg_title: L('Напоминания в Telegram', 'Telegram reminders'),
+  tg_lead: L('Бот напомнит о дедлайнах за 30, 7 и 1 день и по понедельникам — о плане подготовки.', 'The bot reminds you 30, 7 and 1 day before deadlines and about your study plan every Monday.'),
+  tg_connect: L('Подключить Telegram', 'Connect Telegram'), tg_on: L('Telegram подключён ✓', 'Telegram connected ✓'),
+  tg_off: L('Отключить', 'Disconnect'), tg_soon: L('Telegram-бот скоро заработает. А пока добавь дедлайны в календарь телефона (.ics).', 'The Telegram bot is coming soon. Meanwhile, add deadlines to your phone calendar (.ics).'),
+  tg_opened: L('Открой Telegram и нажми «Start» — бот подключится', 'Open Telegram and press “Start” — the bot will connect'),
+
   // навигация внутренних страниц и хаб инструментов
   nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'),
   tools_title: L('Инструменты', 'Tools'),

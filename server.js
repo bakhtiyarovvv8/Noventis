@@ -18,7 +18,10 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
 const SESSION_DAYS = 30;
 // Секрет, который знает только прокси на Cloudflare. Задан → сервер принимает /api только через Cloudflare.
+const bot = require('./bot');   // после .env — бот читает токен из переменных окружения
 const PROXY_KEY = process.env.PROXY_KEY || '';
+const TG_SECRET = process.env.TG_WEBHOOK_SECRET || '';   // заголовок, которым Telegram подписывает вебхук
+const CRON_KEY = process.env.CRON_KEY || '';             // ключ для ежедневной рассылки напоминаний
 const PROD = process.env.NODE_ENV === 'production';
 
 // Без TURSO_DATABASE_URL работаем с локальным файлом — удобно для разработки.
@@ -98,6 +101,18 @@ const ready = db.batch([
     class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     PRIMARY KEY (class_id, user_id)
+  )`,
+  // Telegram: привязанный чат и одноразовые коды для ссылки t.me/бот?start=код
+  `CREATE TABLE IF NOT EXISTS tg_links (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    chat_id TEXT NOT NULL UNIQUE,
+    lang TEXT NOT NULL DEFAULT 'ru'
+  )`,
+  `CREATE TABLE IF NOT EXISTS tg_codes (
+    code TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    lang TEXT NOT NULL DEFAULT 'ru',
+    expires INTEGER NOT NULL
   )`,
 ], 'write');
 
@@ -239,6 +254,19 @@ async function api(req, res, url) {
   if (PROXY_KEY && !viaCloudflare(req)) return json(res, 403, { error: 'forbidden' });
 
   const route = `${req.method} ${url.pathname}`;
+
+  // Telegram и планировщик приходят со своих серверов — проверяем секрет, а не лимит по IP
+  if (route === 'POST /api/tg/webhook') {
+    if (!bot.enabled() || !TG_SECRET || !safeEqual(req.headers['x-telegram-bot-api-secret-token'] || '', TG_SECRET)) return json(res, 403, { error: 'forbidden' });
+    await bot.handleUpdate(await readBody(req), { one, all, run });
+    return json(res, 200, { ok: true });
+  }
+  if (route === 'POST /api/cron/daily') {
+    if (!CRON_KEY || !safeEqual(req.headers['x-cron-key'] || '', CRON_KEY)) return json(res, 403, { error: 'forbidden' });
+    await run('DELETE FROM tg_codes WHERE expires < ?', Date.now());
+    return json(res, 200, await bot.daily({ one, all, run }));
+  }
+
   const ip = clientIp(req);
   if (overLimit(apiHits, ip, 300)) return json(res, 429, { error: 'too_many' });
 
@@ -342,6 +370,24 @@ async function api(req, res, url) {
       if (Number(n.c) >= 100) return json(res, 400, { error: 'too_many' });
       await run('INSERT OR IGNORE INTO deadline_follows (user_id, did) VALUES (?, ?)', user.id, did);
     }
+    return json(res, 200, { ok: true });
+  }
+
+  // ---------- Telegram ----------
+  if (route === 'GET /api/tg') {
+    const link = await one('SELECT 1 FROM tg_links WHERE user_id = ?', user.id);
+    return json(res, 200, { enabled: bot.enabled() && !!bot.botName(), linked: !!link });
+  }
+  if (route === 'POST /api/tg/link') {
+    if (!bot.enabled() || !bot.botName()) return json(res, 400, { error: 'tg_off' });
+    const lang = str((await readBody(req)).lang) === 'en' ? 'en' : 'ru';
+    const code = crypto.randomBytes(9).toString('base64url').replace(/[-_]/g, 'x');
+    await run('DELETE FROM tg_codes WHERE user_id = ?', user.id);
+    await run('INSERT INTO tg_codes (code, user_id, lang, expires) VALUES (?, ?, ?, ?)', code, user.id, lang, Date.now() + 15 * 60e3);
+    return json(res, 200, { url: `https://t.me/${bot.botName()}?start=${code}` });
+  }
+  if (route === 'DELETE /api/tg') {
+    await run('DELETE FROM tg_links WHERE user_id = ?', user.id);
     return json(res, 200, { ok: true });
   }
 
