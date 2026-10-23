@@ -1,0 +1,24 @@
+# Render Blueprint: сервер Noventis (server.js). Витрина — Cloudflare Pages, она пересылает /api/* сюда.
+services:
+  - type: web
+    name: noventis
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm ci
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22.13.0"
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: PROXY_KEY
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
