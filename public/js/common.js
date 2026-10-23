@@ -1,4 +1,15 @@
 // Общие утилиты: язык, API, навигация
+
+// Скрытые разделы (с 2026-10-23: фокус только на вузах). Код и файлы остаются.
+// Чтобы вернуть раздел — убери его из списка. Ключи: тесты 'work', 'prep'; страницы 'plan', 'deadlines', 'careers', 'resources'.
+const HIDDEN_SECTIONS = ['work', 'prep', 'plan', 'deadlines', 'careers', 'resources'];
+const isHidden = id => HIDDEN_SECTIONS.includes(id);
+// Тест теперь один — называем его «Тест направления» (и для старых результатов тоже)
+const catTitle = k => k === 'university'
+  ? tx({ ru: 'Тест направления', en: 'Field test', uz: 'Yoʻnalish testi' })
+  : (CATEGORIES[k] ? tx(CATEGORIES[k].title) : '');
+// Прямой заход на скрытую страницу — на главную
+if (isHidden(location.pathname.replace(/^\/+|\.html$|\/+$/g, ''))) location.replace('/');
 const UI = {
   nav_how: L('Как это работает', 'How it works'), nav_tracks: L('Треки', 'Tracks'), nav_world: L('Мир', 'World'),
   nav_login: L('Войти', 'Log in'), nav_profile: L('Кабинет', 'Dashboard'), nav_logout: L('Выйти', 'Log out'),
@@ -6,8 +17,8 @@ const UI = {
 
   hero_kicker: L('Профориентация для молодёжи Узбекистана', 'Career guidance for the youth of Uzbekistan'),
   hero_title: L('Твоё будущее<br>начинается <em>здесь</em>', 'Your future<br>starts <em>here</em>'),
-  hero_sub: L('Пройди тест о своих способностях — и узнай, куда поступить, кем работать и где в мире твоя сфера развита сильнее всего.',
-              'Take a test about your abilities — and find out where to study, what to work as and where in the world your field thrives.'),
+  hero_sub: L('Пройди тест о своих способностях — и узнай, на какое направление поступать и в каких вузах мира его лучше учить.',
+              'Take a test about your abilities — and find out which field to study and where in the world its best universities are.'),
   scroll: L('Листай вниз', 'Scroll down'),
 
   fly_1t: L('Мир огромен', 'The world is vast'), fly_1s: L('Тысячи вузов, сотни профессий. С чего начать?', 'Thousands of universities, hundreds of careers. Where to start?'),
@@ -21,7 +32,7 @@ const UI = {
   how_kicker: L('Как это работает', 'How it works'), how_title: L('Три шага до ясности', 'Three steps to clarity'),
   how_1t: L('Расскажи о себе', 'Tell us about you'), how_1s: L('Возраст, языки, любимые предметы, навыки и мечты.', 'Age, languages, favourite subjects, skills and dreams.'),
   how_2t: L('Ответь на вопросы', 'Answer questions'), how_2s: L('Короткие вопросы о способностях — без правильных и неправильных ответов.', 'Short questions about your abilities — no right or wrong answers.'),
-  how_3t: L('Получи план', 'Get your plan'), how_3s: L('Направления, вузы, страны, зарплаты и пошаговый план подготовки.', 'Fields, universities, countries, salaries and a step-by-step prep plan.'),
+  how_3t: L('Выбери вуз', 'Pick a university'), how_3s: L('Направления, вузы и страны, шансы поступления и стоимость учёбы.', 'Fields, universities and countries, admission chances and cost of study.'),
   stat_fields: L('направлений', 'fields'), stat_unis: L('вузов мира', 'universities'), stat_countries: L('стран и регионов', 'countries & regions'), stat_grants: L('программ грантов', 'grant programs'),
   world_kicker: L('Где развиты сферы', 'Where fields thrive'), world_title: L('Мир как карта возможностей', 'The world as a map of opportunity'),
   city_tokyo: L('Япония', 'Japan'),
@@ -78,8 +89,8 @@ const UI = {
 
   // главная вошедшего и повторный тест
   home_title: L('Начнём<br>твой <em>путь</em>', 'Let’s start<br>your <em>journey</em>'),
-  home_sub: L('Начни с одного из трёх тестов. Каждая попытка сохраняется в кабинете — можно проходить снова и смотреть, как меняется результат.',
-              'Start with one of the three tests. Every attempt is saved to your dashboard — retake any time and see how your result changes.'),
+  home_sub: L('Пройди тест. Каждая попытка сохраняется в кабинете — можно проходить снова и смотреть, как меняется результат.',
+              'Take the test. Every attempt is saved to your dashboard — retake any time and see how your result changes.'),
   home_done: L('пройден', 'taken'), home_again: L('Пройти ещё раз', 'Take again'),
   rt_title: L('Пройти тест ещё раз?', 'Take the test again?'),
   rt_text: L('Ты уже проходил(а) этот тест. Новая попытка сохранится отдельно — прошлые результаты останутся в кабинете.', 'You’ve already taken this test. The new attempt is saved separately — your previous results stay in your dashboard.'),
@@ -173,9 +184,9 @@ const UI = {
   cr_unis: L('Сильные вузы', 'Top universities'), cr_links: L('Дальше', 'Next steps'),
 
   // навигация внутренних страниц и хаб инструментов
-  nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'),
+  nav_tools: L('Инструменты', 'Tools'), nav_unis: L('Вузы мира', 'World universities'), nav_start: L('Вузы для меня', 'My universities'),
   tools_title: L('Инструменты', 'Tools'),
-  tools_lead: L('Всё, что помогает выбрать путь и поступить: от каталога вузов до плана подготовки.', 'Everything that helps you choose a path and get in: from the university catalogue to your study plan.'),
+  tools_lead: L('Всё, что помогает выбрать путь и поступить: от каталога вузов до калькуляторов шансов и стоимости.', 'Everything that helps you choose a path and get in: from the university catalogue to chances and cost calculators.'),
 
   // каталог вузов
   cat_title: L('Все вузы мира', 'All universities in the world'),

@@ -90,7 +90,36 @@ const ready = db.batch([
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   'CREATE INDEX IF NOT EXISTS calcs_user ON calcs(user_id)',
-], 'write');
+  // заявки на курсы учебных центров (лиды). user_id пустой, если человек не входил.
+  // test_summary / countries / unis — JSON-текст. status: new | sent | done | rejected
+  `CREATE TABLE IF NOT EXISTS leads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    city TEXT NOT NULL,
+    course_id TEXT NOT NULL,
+    center_id TEXT NOT NULL,
+    course_title TEXT NOT NULL DEFAULT '',
+    center_name TEXT NOT NULL DEFAULT '',
+    field TEXT NOT NULL DEFAULT '',
+    test_summary TEXT NOT NULL DEFAULT '',
+    countries TEXT NOT NULL DEFAULT '',
+    unis TEXT NOT NULL DEFAULT '',
+    lang TEXT NOT NULL DEFAULT 'ru',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    status TEXT NOT NULL DEFAULT 'new',
+    ip TEXT NOT NULL DEFAULT ''
+  )`,
+  'CREATE INDEX IF NOT EXISTS leads_created ON leads(created_at)',
+  'CREATE INDEX IF NOT EXISTS leads_phone ON leads(phone)',
+  'CREATE INDEX IF NOT EXISTS leads_user ON leads(user_id)',
+], 'write').then(async () => {
+  // миграция для баз, где leads уже есть: поле is_demo (1 — курс-пример)
+  const cols = await db.execute('PRAGMA table_info(leads)');
+  if (!cols.rows.some(c => c.name === 'is_demo')) await db.execute('ALTER TABLE leads ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0');
+  await db.execute('CREATE INDEX IF NOT EXISTS leads_ip_created ON leads(ip, created_at)');
+});
 
 const hashPassword = (password, salt) => new Promise((resolve, reject) =>
   crypto.scrypt(password, salt, 64, { N: 16384, r: 8, p: 1 }, (e, key) => e ? reject(e) : resolve(key.toString('hex'))));
@@ -183,7 +212,70 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const str = v => (typeof v === 'string' ? v : '');
 const isPlainObject = v => !!v && typeof v === 'object' && !Array.isArray(v);
 
-let rateCache = { t: 0, data: { rate: null, date: null } };
+// --- заявки на курсы
+const LEAD_STATUSES = ['new', 'sent', 'done', 'rejected'];
+const LEAD_MSG = {
+  ru: { too_many_leads: 'Слишком много заявок с вашего адреса. Попробуйте позже.', duplicate_lead: 'Вы уже оставили заявку на этот курс. Пока это пример центра — заявка сохранена у нас.' },
+  en: { too_many_leads: 'Too many requests from your address. Please try again later.', duplicate_lead: 'You have already applied for this course. This is a sample center for now — your request is saved with us.' },
+  uz: { too_many_leads: 'Manzilingizdan juda koʻp ariza yuborildi. Keyinroq urinib koʻring.', duplicate_lead: 'Siz bu kursga allaqachon ariza qoldirgansiz. Hozircha bu markaz namuna — ariza bizda saqlangan.' },
+};
+
+// Каталог курсов/центров и направления берём из public/js (как scripts/check-start-data.js); грузим один раз при первой заявке
+let catalogCache = null;
+function catalog() {
+  if (catalogCache) return catalogCache;
+  const vm = require('node:vm');
+  const js = path.join(PUBLIC, 'js');
+  const read = f => fs.readFileSync(path.join(js, f), 'utf8');
+  const ctx = { window: {}, console: { log() {}, warn() {}, error() {} } };
+  vm.createContext(ctx);
+  vm.runInContext(read('data.js') + '\n' + read('abroad.js').replace(/^const GRANT_INFO/m, 'var GRANT_INFO') + '\n' + read('unis-data.js') +
+    ';this.UNIS=UNIS;this.FIELDS=FIELDS;this.AREAS=AREAS;this.COUNTRIES=COUNTRIES;this.uniFits=uniFits;this.findUni=findUni;', ctx, { filename: 'base' });
+  vm.runInContext(read('start-data.js'), ctx, { filename: 'start-data.js' });
+  const S = ctx.window.START;
+  catalogCache = {
+    courses: new Map(S.COURSES.map(c => [c.id, { id: c.id, centerId: c.centerId, title: str(c.title && c.title.ru), demo: !!c.demo }])),
+    centers: new Map(S.CENTERS.map(c => [c.id, { id: c.id, name: str(c.name && c.name.ru) }])),
+    fields: new Set(Object.keys(ctx.FIELDS)),
+  };
+  return catalogCache;
+}
+// убираем невидимые и управляющие символы, затем trim
+const cleanText = v => str(v).replace(/[\p{Cc}\p{Cf}​-‏⁠﻿]/gu, '').trim();
+// +998 и 9 цифр; пробелы, дефисы, скобки допускаются; возвращает +998XXXXXXXXX или ''
+function normPhone(v) {
+  const s = str(v).trim();
+  if (s.length > 25 || /[^\d\s\-()+]/.test(s) || s.indexOf('+', 1) > 0) return '';
+  const d = s.replace(/\D/g, '');
+  return /^998\d{9}$/.test(d) ? '+' + d : '';
+}
+// JSON-поле (объект или массив) → текст до 4 КБ; null — слишком большое или неверное
+function jsonField(v) {
+  if (v === undefined || v === null || v === '') return '';
+  if (typeof v !== 'object') return null;
+  const t = JSON.stringify(v);
+  return t.length <= 4096 ? t : null;
+}
+const parseJson = t => { try { return t ? JSON.parse(t) : null; } catch { return null; } };
+const leadOut = r => ({ ...r, test_summary: parseJson(r.test_summary), countries: parseJson(r.countries), unis: parseJson(r.unis) });
+
+// доступ админа: заголовок x-admin-token или Authorization: Bearer; без ADMIN_TOKEN (≥16 символов) в .env — всегда 403
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+function isAdmin(req) {
+  if (ADMIN_TOKEN.length < 16) return false;
+  const bearer = str(req.headers.authorization).replace(/^Bearer\s+/i, '');
+  const t = str(req.headers['x-admin-token']) || bearer;
+  return !!t && safeEqual(t, ADMIN_TOKEN);
+}
+const csvCell = v => {
+  let s = String(v ?? '');
+  if ((/^[=+\-@\t\r]/.test(s) || /^[=+\-@]/.test(s.replace(/^[\s ]+/, ''))) && !/^\+998\d{9}$/.test(s)) s = "'" + s;   // защита от формул в Excel
+  return /[",\r\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+};
+const LEAD_COLS = ['id', 'created_at', 'status', 'name', 'phone', 'city', 'course_id', 'course_title', 'center_id', 'center_name',
+  'field', 'is_demo', 'test_summary', 'countries', 'unis', 'lang', 'user_id'];
+
+let rateCache ={ t: 0, data: { rate: null, date: null } };
 async function usdRate() {
   if (Date.now() - rateCache.t < 6 * 36e5) return rateCache.data;
   try {
@@ -249,7 +341,81 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true });
   }
 
+  // ---------- админ: заявки (по ADMIN_TOKEN, не по входу пользователя) ----------
+  if (url.pathname.startsWith('/api/admin/')) {
+    if (!isAdmin(req)) {
+      overLimit(authHits, ip + '|admin', 10);   // считаем попытки; после 10 неудач — 429
+      return json(res, authHits.get(ip + '|admin').n > 10 ? 429 : 403, { error: authHits.get(ip + '|admin').n > 10 ? 'too_many' : 'forbidden' });
+    }
+    const status = url.searchParams.get('status') || '';
+    if (status && !LEAD_STATUSES.includes(status)) return json(res, 400, { error: 'bad_status' });
+    const where = status ? 'WHERE status = ?' : '';
+    const args = status ? [status] : [];
+
+    if (route === 'GET /api/admin/leads') {
+      const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit'), 10) || 50));
+      const offset = Math.max(0, parseInt(url.searchParams.get('offset'), 10) || 0);
+      const total = await one(`SELECT COUNT(*) AS c FROM leads ${where}`, ...args);
+      const rows = await all(`SELECT * FROM leads ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
+      return json(res, 200, { total: Number(total.c), limit, offset, leads: rows.map(leadOut) });
+    }
+    if (route === 'GET /api/admin/leads.csv') {
+      const rows = await all(`SELECT ${LEAD_COLS.join(', ')} FROM leads ${where} ORDER BY id DESC LIMIT 5000`, ...args);
+      const csv = '﻿' + [LEAD_COLS.join(','), ...rows.map(r => LEAD_COLS.map(c => csvCell(r[c])).join(','))].join('\r\n') + '\r\n';
+      res.writeHead(200, {
+        'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'no-store',
+        'Content-Disposition': 'attachment; filename="noventis-leads.csv"',
+      });
+      return res.end(csv);
+    }
+    const lm = url.pathname.match(/^\/api\/admin\/leads\/(\d{1,12})$/);
+    if (lm && req.method === 'PATCH') {
+      const body = await readBody(req);
+      if (!LEAD_STATUSES.includes(body.status)) return json(res, 400, { error: 'bad_status' });
+      const r = await run('UPDATE leads SET status = ? WHERE id = ?', body.status, Number(lm[1]));
+      if (!r.rowsAffected) return json(res, 404, { error: 'not_found' });
+      return json(res, 200, { ok: true });
+    }
+    return json(res, 404, { error: 'not_found' });
+  }
+
   const user = await currentUser(req);
+
+  // Заявка на курс: можно без входа; если вошёл — привязываем user_id
+  if (route === 'POST /api/leads') {
+    const b = await readBody(req);
+    const lang = ['ru', 'en', 'uz'].includes(b.lang) ? b.lang : 'ru';
+    const name = cleanText(b.name), city = cleanText(b.city), phone = normPhone(b.phone);
+    if (name.length < 2 || name.length > 60) return json(res, 400, { error: 'name_invalid' });
+    if (!phone) return json(res, 400, { error: 'phone_invalid' });
+    if (city.length < 2 || city.length > 60) return json(res, 400, { error: 'city_invalid' });
+    const idOf = v => (typeof v === 'string' || typeof v === 'number') ? String(v).trim() : '';
+    const courseId = idOf(b.course_id), centerId = idOf(b.center_id);
+    if (!courseId || courseId.length > 80) return json(res, 400, { error: 'course_required' });
+    if (!centerId || centerId.length > 80) return json(res, 400, { error: 'center_required' });
+    const summary = jsonField(b.test_summary), countries = jsonField(b.countries), unis = jsonField(b.unis);
+    if (summary === null || countries === null || unis === null) return json(res, 400, { error: 'field_too_large' });
+    const msg = LEAD_MSG[lang];
+    // курс и центр сверяем с каталогом на сервере; названия берём оттуда, присланные клиентом игнорируем
+    const cat = catalog();
+    const course = cat.courses.get(courseId), center = cat.centers.get(centerId);
+    if (!course || !center || course.centerId !== center.id) return json(res, 400, { error: 'course_invalid' });
+    const fieldId = idOf(b.field);
+    const field = cat.fields.has(fieldId) ? fieldId : null;
+    // на пару IP + телефон — 5 в час; на IP целиком — мягкий потолок 60 в час (за одним IP сидят сотни людей)
+    const n = await one(`SELECT COUNT(*) AS c, SUM(phone = ?) AS p FROM leads WHERE ip = ? AND created_at > datetime('now', '-1 hour')`, phone, ip);
+    if (Number(n.p || 0) >= 5 || Number(n.c) >= 60) return json(res, 429, { error: 'too_many_leads', message: msg.too_many_leads });
+    // одна и та же пара телефон+курс — раз в сутки (проверка и вставка одним запросом)
+    const r = await run(`INSERT INTO leads (user_id, name, phone, city, course_id, center_id, course_title, center_name, field,
+        test_summary, countries, unis, lang, ip, is_demo)
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      WHERE NOT EXISTS (SELECT 1 FROM leads WHERE phone = ? AND course_id = ? AND created_at > datetime('now', '-1 day'))`,
+      user ? user.id : null, name, phone, city, course.id, center.id,
+      course.title, center.name, field ?? '',
+      summary, countries, unis, lang, ip, course.demo ? 1 : 0, phone, course.id);
+    if (!r.rowsAffected) return json(res, 429, { error: 'duplicate_lead', message: msg.duplicate_lead });
+    return json(res, 201, { ok: true, id: Number(r.lastInsertRowid) });
+  }
 
   if (route === 'GET /api/me') return json(res, 200, { user });
 
@@ -271,6 +437,12 @@ async function api(req, res, url) {
     const r = await run('INSERT INTO results (user_id, category, answers, summary) VALUES (?, ?, ?, ?)',
       user.id, category, JSON.stringify(answers), JSON.stringify(summary));
     return json(res, 201, { id: Number(r.lastInsertRowid) });
+  }
+
+  if (route === 'GET /api/leads/mine') {
+    const rows = await all(`SELECT id, name, phone, city, course_id, center_id, course_title, center_name, field, lang, status, created_at
+      FROM leads WHERE user_id = ? ORDER BY id DESC LIMIT 100`, user.id);
+    return json(res, 200, { leads: rows });
   }
 
   if (route === 'GET /api/favorites') {

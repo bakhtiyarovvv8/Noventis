@@ -17,6 +17,7 @@
       <nav class="nav-links">
         <a href="/tools" data-i18n="nav_tools"></a>
         <a href="/catalog" data-i18n="nav_unis"></a>
+        <a href="/start" data-i18n="nav_start"></a>
       </nav>
       <div class="nav-right">
         <div class="lang-toggle"><button data-lang="ru">RU</button><button data-lang="uz">UZ</button><button data-lang="en">EN</button></div>
@@ -50,7 +51,7 @@
       { href: '/favorites', g: '♥', n: L('Избранные вузы', 'Saved universities'), d: L('Твои ♡ и подбор вузов по стране, бюджету и направлению', 'Your ♡ and a university finder by country, budget and field') },
     ];
     const render = () => {
-      document.getElementById('grid').innerHTML = TOOLS.map(x =>
+      document.getElementById('grid').innerHTML = TOOLS.filter(x => !isHidden(x.href.slice(1))).map(x =>
         `<a class="tool" href="${x.href}"><div class="glyph">${x.g}</div><b>${tx(x.n)}</b><span>${tx(x.d)}</span></a>`).join('');
     };
     document.addEventListener('langchange', render);

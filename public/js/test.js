@@ -1,7 +1,7 @@
 // Тест: вопросы → расчёт → рекомендации
 const app = document.getElementById('app');
 const params = new URLSearchParams(location.search);
-const CAT = CATEGORIES[params.get('cat')] ? params.get('cat') : 'university';
+const CAT = CATEGORIES[params.get('cat')] && !isHidden(params.get('cat')) ?params.get('cat') : 'university';
 const cat = CATEGORIES[CAT];
 const QIDS = cat.questions;
 
@@ -31,8 +31,8 @@ function isAnswered(qid) {
 function renderIntro() {
   app.innerHTML = `
     <div class="intro">
-      <span class="kicker">${tx(cat.title)} · ${t('minutes')}</span>
-      <h1>${tx(cat.title)}</h1>
+      <span class="kicker">${catTitle(CAT)} · ${t('minutes')}</span>
+      <h1>${catTitle(CAT)}</h1>
       <p>${tx(cat.lead)}</p>
       <button class="btn btn-gold btn-lg" id="go">${t('start')} <span class="arrow">→</span></button>
     </div>`;
@@ -129,11 +129,7 @@ function go(dir) {
   });
 }
 
-document.addEventListener('keydown', e => {
-  if (view !== 'quiz') return;
-  if (e.key === 'Enter') go(1);
-  if (e.key === 'ArrowLeft' && idx >= 0) go(-1);
-});
+// (старое управление клавишами фиксированных тестов отключено — тест теперь адаптивный, см. ниже)
 
 // ---------- расчёт ----------
 function scoreFields(ans) {
@@ -207,7 +203,7 @@ function langTips(s) {
 
 function head(titleKey, s) {
   return `<div class="result-head">
-    <span class="kicker">${t('res_kicker')} · ${tx(CATEGORIES[current.category].title)}</span>
+    <span class="kicker">${t('res_kicker')} · ${catTitle(current.category)}</span>
     <h1>${t(titleKey)}</h1>
     ${profileChips(s)}
   </div>`;
@@ -240,8 +236,7 @@ function fieldCard(f, rank, inner) {
     <p class="desc">${tx(F.desc)}</p>
     ${why.length ? `<div class="why"><h4>${t('why_title')}</h4><div class="profile-chips">${why.map(x => `<span class="chip gold">${escapeHtml(x.t)} <b>+${x.w}</b></span>`).join('')}</div></div>` : ''}
     ${inner}
-    <p class="note"><a href="/careers?f=${f.id}" style="color:var(--gold)">${t('cr_day')} →</a> &nbsp;·&nbsp;
-      <a href="/resources?area=${Object.keys(AREAS).find(a => AREAS[a].f.includes(f.id))}" style="color:var(--gold)">${t('rs_field')}</a></p>
+    ${isHidden('careers') && isHidden('resources') ? '' : `<p class="note">${isHidden('careers') ? '' : `<a href="/careers?f=${f.id}" style="color:var(--gold)">${t('cr_day')} →</a>`}${isHidden('careers') || isHidden('resources') ? '' : ' &nbsp;·&nbsp; '}${isHidden('resources') ? '' : `<a href="/resources?area=${Object.keys(AREAS).find(a => AREAS[a].f.includes(f.id))}" style="color:var(--gold)">${t('rs_field')}</a>`}</p>`}
   </article>`;
 }
 
@@ -403,7 +398,7 @@ function renderResult() {
   view = 'result';
   const s = current.summary;
   const html = { university: renderUniversity, work: renderWork, prep: renderPrep }[current.category](s);
-  const others = Object.keys(CATEGORIES).filter(k => k !== current.category)
+  const others = Object.keys(CATEGORIES).filter(k => k !== current.category && !isHidden(k))
     .map(k => `<a class="btn btn-ghost" href="/test?cat=${k}">${tx(CATEGORIES[k].title)} →</a>`).join('');
   const date = (current.created_at ? new Date(current.created_at.replace(' ', 'T') + 'Z') : new Date())
     .toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
@@ -411,7 +406,7 @@ function renderResult() {
     + html + `<div class="result-actions">
       <button class="btn btn-gold" id="pdf">${t('pdf_btn')}</button>
       <button class="btn btn-ghost" id="share">${t('share_btn')} ↗</button>
-      ${current.category === 'prep' && current.id ? `<a class="btn btn-ghost" href="/plan?result=${current.id}">${t('pl_open')} →</a>` : ''}
+      ${current.category === 'prep' && current.id && !isHidden('plan') ?`<a class="btn btn-ghost" href="/plan?result=${current.id}">${t('pl_open')} →</a>` : ''}
       <a class="btn btn-ghost" href="/test?cat=${current.category}">${t('retake')}</a>
       <a class="btn btn-ghost" href="/profile">${t('to_profile')}</a>${others}</div>`;
   document.getElementById('pdf').onclick = () => { toast(t('pdf_hint')); setTimeout(() => print(), 600); };
@@ -498,10 +493,166 @@ async function shareCard() {
   } finally { btn.disabled = false; }
 }
 
+// ---------- адаптивный тест: следующий вопрос зависит от ответов (ADAPTIVE из adaptive-tree.js) ----------
+// Старые фиксированные тесты выше остаются в коде (скрытые категории), но на экран не выводятся.
+const AD_BASE = 14;           // обычная длина пути; верхняя граница — ADAPTIVE.MAX_LEN (18)
+let ad = [];                  // ответы по порядку: [{ id, v }], у q_lang v — массив
+let adNode = null;            // текущий вопрос
+let adSel;                    // выбор на текущем вопросе (строка / массив)
+let adTimer = null;
+
+const isAdResult = c => !!(c && c.summary && Array.isArray(c.summary.top) && c.summary.path);
+const adAnswered = () => adNode && (adNode.type === 'multi' ? Array.isArray(adSel) && adSel.length > 0 : adSel !== undefined && adSel !== null);
+
+function adIntro() {
+  view = 'quiz';
+  adNode = null;
+  app.innerHTML = `
+    <div class="intro">
+      <span class="kicker">${T3('Подбор направления', 'Find your field', 'Yoʻnalishni tanlash')} · ${t('minutes')}</span>
+      <h1>${T3('Найди своё направление', 'Find your field', 'Oʻz yoʻnalishingizni toping')}</h1>
+      <p>${T3('Короткие вопросы — каждый следующий зависит от твоего ответа. В конце — направление, которое тебе подходит, и подбор вузов.', 'Short questions — each next one depends on your answer. At the end: the field that fits you and a list of universities.', 'Qisqa savollar — har bir keyingisi javobingizga bogʻliq. Oxirida sizga mos yoʻnalish va oliygohlar tanlovi.')}</p>
+      <button class="btn btn-gold btn-lg" id="go">${t('start')} <span class="arrow">→</span></button>
+    </div>`;
+  document.getElementById('go').onclick = () => { ad = []; adShow(ADAPTIVE.nextQuestion(ad), undefined, 1); };
+  gsap.from('.intro > *', { y: 40, opacity: 0, stagger: .1, duration: 1.1, ease: 'expo.out' });
+}
+
+// показать вопрос с плавным переходом (dir: 1 вперёд, -1 назад, 0 без анимации)
+function adShow(node, sel, dir) {
+  const draw = () => { adNode = node; adSel = sel; adRender(); scrollTo(0, 0); };
+  if (!dir || !app.children.length) return draw();
+  gsap.to(app.children, { opacity: 0, y: dir > 0 ? -20 : 20, duration: .25, ease: 'power2.in', onComplete: draw });
+}
+
+function adRender() {
+  const q = adNode, multi = q.type === 'multi';
+  const n = ad.length + 1;
+  const total = n <= AD_BASE ? AD_BASE : ADAPTIVE.MAX_LEN;
+  const sel = multi ? (adSel || []) : [adSel];
+  const opts = q.options.concat(q.extra ? [q.extra] : []);
+  app.innerHTML = `
+    <div class="progress-row"><span class="sect">${T3('Подбор направления', 'Find your field', 'Yoʻnalishni tanlash')}</span><span>${t('q_of')} ${n} / ${total}</span></div>
+    <div class="progress"><span style="width:${((n - 1) / total) * 100}%"></span></div>
+    <div class="q-card">
+      <h2>${tx(q.q)}</h2>
+      <p class="hint">${q.hint ? tx(q.hint) : ''}</p>
+      <div class="options">${opts.map(o => `<button class="opt ${multi ? 'multi' : ''} ${sel.includes(o.v) ? 'on' : ''}" data-v="${escapeHtml(o.v)}">${tx(o.t)}</button>`).join('')}</div>
+    </div>
+    <div class="q-nav">
+      <button class="btn btn-ghost" id="back">← ${t('back')}</button>
+      <button class="btn btn-gold" id="next" ${adAnswered() ? '' : 'disabled'}>${multi ? t('finish') : t('next')} <span class="arrow">→</span></button>
+    </div>`;
+  requestAnimationFrame(() => { const bar = app.querySelector('.progress span'); if (bar) bar.style.width = `${(n / total) * 100}%`; });
+  app.querySelectorAll('.opt').forEach(b => b.onclick = () => adPick(b.dataset.v));
+  document.getElementById('back').onclick = adBack;
+  document.getElementById('next').onclick = adNext;
+  gsap.fromTo('.q-card h2, .q-card .hint', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: .8, stagger: .06, ease: 'expo.out' });
+  gsap.fromTo('.opt', { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: .7, stagger: .025, ease: 'expo.out', delay: .1 });
+}
+
+function adPick(v) {
+  const node = adNode;
+  if (node.type === 'multi') {
+    const arr = [...(adSel || [])];
+    const i = arr.indexOf(v);
+    i >= 0 ? arr.splice(i, 1) : arr.push(v);
+    adSel = arr;
+  } else {
+    adSel = v;
+    clearTimeout(adTimer);
+    adTimer = setTimeout(() => { if (adNode === node) adNext(); }, 320);
+  }
+  const sel = node.type === 'multi' ? adSel : [adSel];
+  app.querySelectorAll('.opt').forEach(b => b.classList.toggle('on', sel.includes(b.dataset.v)));
+  document.getElementById('next').disabled = !adAnswered();
+}
+
+function adNext() {
+  clearTimeout(adTimer);
+  if (view !== 'quiz' || !adNode || !adAnswered()) return;
+  ad.push({ id: adNode.id, v: adSel });
+  const next = ADAPTIVE.nextQuestion(ad);
+  if (!next) return adFinish();
+  adShow(next, undefined, 1);
+}
+
+function adBack() {
+  clearTimeout(adTimer);
+  if (!ad.length) return adIntro();
+  const last = ad.pop();
+  adShow(ADAPTIVE.nextQuestion(ad), last.v, -1);
+}
+
+document.addEventListener('keydown', e => {
+  if (view !== 'quiz') return;
+  if (e.key === 'Enter' && adNode) adNext();
+  if (e.key === 'ArrowLeft' && adNode) adBack();
+});
+
+async function adFinish() {
+  view = 'result';
+  adNode = null;
+  app.innerHTML = `<div class="loader"><div class="orbit"></div><p>${t('analyzing')}</p></div>`;
+  const summary = ADAPTIVE.result(ad);
+  current = { category: 'university', answers: summary.answers, summary, adaptive: true };
+  const [r] = await Promise.all([api('/api/results', { method: 'POST', body: current }), new Promise(r => setTimeout(r, 1600))]);
+  if (r.ok) current.id = r.data.id;
+  renderAdaptiveResult();
+  if (r.ok) toast(t('saved'));
+}
+
+// ссылка «К вузам» — та же, что на экране результата и в кабинете
+const startHref = s => `/start?field=${s.top[0].id}${s.top.length > 1 ? '&alt=' + s.top.slice(1).map(f => f.id).join(',') : ''}`;
+
+function renderAdaptiveResult() {
+  view = 'result';
+  const s = current.summary;
+  const answersArr = s.path.map(id => ({ id, v: (current.answers || s.answers || {})[id] }));
+  const [main, ...alts] = s.top.filter(f => FIELDS[f.id]);
+  const F = FIELDS[main.id];
+  const why = ADAPTIVE.why(main.id, answersArr);
+  const date = (current.created_at ? new Date(current.created_at.replace(' ', 'T') + 'Z') : new Date())
+    .toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
+  const altCards = alts.map((f, i) => {
+    const G = FIELDS[f.id];
+    return `<article class="card field-card">
+      <div class="top"><div class="glyph">${escapeHtml(G.glyph)}</div><div><div class="rank">${T3('Запасное', 'Backup', 'Zaxira')} #${i + 2}</div><h3>${tx(G.name)}</h3></div></div>
+      <div class="meter"><div class="bar"><span data-w="${f.pct}"></span></div><b>${f.pct}%</b></div>
+      <p class="desc">${tx(G.desc)}</p>
+    </article>`;
+  }).join('');
+  app.innerHTML = `<div class="print-head"><b>Noventis<span>.</span></b><span>${t('report_for')} ${escapeHtml(ME.name)} · ${t('report_date')}: ${date}</span></div>
+    <div class="result-head">
+      <span class="kicker">${t('res_kicker')}</span>
+      <h1>${T3('Твоё направление', 'Your field', 'Sizning yoʻnalishingiz')}</h1>
+    </div>
+    <article class="card field-card">
+      <div class="top"><div class="glyph">${escapeHtml(F.glyph)}</div><div><div class="rank">#1</div><h3>${tx(F.name)}</h3></div></div>
+      <div class="meter"><div class="bar"><span data-w="${main.pct}"></span></div><b>${main.pct}%</b></div>
+      <p class="desc">${tx(F.desc)}</p>
+      ${why.length ? `<div class="why"><h4>${t('why_title')}</h4><div class="profile-chips">${why.map(x => `<span class="chip gold">${escapeHtml(tx(x.t))} <b>+${x.w}</b></span>`).join('')}</div></div>` : ''}
+    </article>
+    ${altCards ? `<h4 class="rank" style="margin:26px 0 14px">${T3('Запасные направления', 'Backup fields', 'Zaxira yoʻnalishlar')}</h4>${altCards}` : ''}
+    <div class="result-actions">
+      <a class="btn btn-gold btn-lg" id="to-start" href="${startHref(s)}">${T3('Выбрать страны и вузы', 'Choose countries and universities', 'Davlat va oliygohlarni tanlash')} <span class="arrow">→</span></a>
+    </div>
+    <div class="result-actions" style="margin-top:14px">
+      <button class="btn btn-ghost" id="pdf">${t('pdf_btn')}</button>
+      <button class="btn btn-ghost" id="share">${t('share_btn')} ↗</button>
+      <a class="btn btn-ghost" href="/test">${t('retake')}</a>
+      <a class="btn btn-ghost" href="/profile">${t('to_profile')}</a>
+    </div>`;
+  document.getElementById('pdf').onclick = () => { toast(t('pdf_hint')); setTimeout(() => print(), 600); };
+  document.getElementById('share').onclick = shareCard;
+  gsap.from('.result-head > *, .card', { y: 40, opacity: 0, stagger: .08, duration: 1, ease: 'expo.out' });
+  requestAnimationFrame(() => setTimeout(() => app.querySelectorAll('.meter .bar span').forEach(b => b.style.width = b.dataset.w + '%'), 200));
+}
+
 // ---------- старт ----------
 document.addEventListener('langchange', () => {
-  if (view === 'result') return renderResult();
-  idx === -1 ? renderIntro() : renderQuestion();
+  if (view === 'result') return isAdResult(current) ? renderAdaptiveResult() : renderResult();
+  adNode ? adRender() : adIntro();
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -511,21 +662,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   const rid = params.get('result');
   if (rid) {
     const r = await api('/api/results/' + encodeURIComponent(rid));
-    if (r.ok && CATEGORIES[r.data.category]) {
+    if (r.ok && CATEGORIES[r.data.category] && !isHidden(r.data.category)) {
       current = r.data;
       document.getElementById('bg').src = CATEGORIES[current.category].img;
-      return renderResult();
+      return isAdResult(current) ? renderAdaptiveResult() : renderResult();
+    }
+    // результат старого скрытого теста («Работа» / «Подготовка») — объясняем и ведём к новому тесту
+    if (r.ok && CATEGORIES[r.data.category] && isHidden(r.data.category)) {
+      document.getElementById('bg').src = cat.img;
+      await ask(tx({ ru: 'Этот тест больше не используется', en: 'This test is no longer used', uz: 'Bu test endi ishlatilmaydi' }),
+        tx({ ru: 'Этот тест больше не используется — пройдите новый тест.', en: 'This test is no longer used — take the new test.', uz: 'Bu test endi ishlatilmaydi — yangi testni topshiring.' }),
+        [{ v: 'yes', label: tx({ ru: 'Пройти новый тест', en: 'Take the new test', uz: 'Yangi testni topshirish' }), gold: true }]);
+      location.href = '/test';
+      return;
     }
   }
   document.getElementById('bg').src = cat.img;
-  answers = { ...loadProfile() };
   // тест уже проходили — сначала спрашиваем, точно ли пройти ещё раз
-  const prev = ((await api('/api/results')).data.results || []).filter(x => x.category === CAT);
+  const prev = ((await api('/api/results')).data.results || []).filter(x => x.category === 'university');
   if (prev.length) {
     const v = await ask(t('rt_title'), `${t('rt_text')}<br><br><b>${t('rt_count')}: ${prev.length}</b>`, [
       { v: 'yes', label: t('rt_yes'), gold: true }, { v: 'last', label: t('rt_last') }, { v: null, label: t('cancel') }]);
     if (v === 'last') { location.href = '/test?result=' + prev[0].id; return; }
     if (v !== 'yes') { location.href = document.referrer.startsWith(location.origin) ? document.referrer : '/'; return; }
   }
-  renderIntro();
+  adIntro();
 });

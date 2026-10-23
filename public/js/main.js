@@ -15,26 +15,13 @@ document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click
 let RESULTS = null;
 function renderTracks() {
   const grid = document.getElementById('tracks-grid');
-  grid.innerHTML = Object.entries(CATEGORIES).map(([id, c], i) => {
-    const mine = RESULTS ? RESULTS.filter(r => r.category === id) : [];
-    const last = mine[0] && new Date(mine[0].created_at.replace(' ', 'T') + 'Z').toLocaleDateString(locale(), { day: 'numeric', month: 'long' });
-    return `<a class="track reveal" href="/test?cat=${id}">
-      <img src="${c.img}" alt="" loading="lazy">
-      <span class="idx">0${i + 1}</span>
-      ${mine.length ? `<span class="track-done">✓ ${t('home_done')}: ${mine.length} · ${last}</span>` : ''}
-      <h3>${tx(c.title)}</h3>
-      <p>${tx(c.lead)}</p>
-      <div class="go"><span>${t(mine.length ? 'home_again' : 'start_track')}</span><span class="circle">→</span></div>
-    </a>`;
-  }).join('');
-  grid.querySelectorAll('.track').forEach(card => {
-    card.addEventListener('mousemove', e => {
-      const r = card.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
-      card.style.transform = `perspective(1000px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg)`;
-    });
-    card.addEventListener('mouseleave', () => { card.style.transform = ''; });
-  });
+  // Пока вместо трёх карточек одна кнопка (карточки по CATEGORIES и isHidden() вернутся, если раскрыть 'work'/'prep')
+  grid.style.display = 'flex';
+  grid.style.justifyContent = 'center';
+  grid.style.flexWrap = 'wrap';
+  grid.style.gap = '14px';
+  grid.innerHTML = `<a href="/test" class="btn btn-gold btn-lg"><span>${t('start')}</span><span class="arrow">→</span></a>
+    <a href="/start" class="btn btn-ghost"><span>${t('fav_find')}</span></a>`;
 }
 
 // --- заголовок героя построчно; у вошедшего — приветствие «Начнём путь»

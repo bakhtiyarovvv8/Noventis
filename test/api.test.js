@@ -34,9 +34,11 @@ const call = async (base, p, { method = 'GET', body, cookie = '', headers = {} }
 };
 const uniq = p => `${p}${Date.now()}${Math.random().toString(36).slice(2, 6)}@test.uz`;
 
-let LOCAL, PROXIED;
+const ADMIN = 'test-admin-token-1234567890';
+let LOCAL, PROXIED, LEADS;
 before(async () => {
-  LOCAL = await startServer(3301);
+  LOCAL = await startServer(3301, { ADMIN_TOKEN: '' });
+  LEADS = await startServer(3303, { PROXY_KEY: KEY, ADMIN_TOKEN: ADMIN });
   PROXIED = await startServer(3302, { PROXY_KEY: KEY, NODE_ENV: 'production' });
 });
 after(() => servers.forEach(p => p.kill()));
@@ -175,6 +177,122 @@ test('за Cloudflare: без секрета или с неверным — 403,
   assert.equal((await call(PROXIED, '/api/me')).status, 403);
   assert.equal((await call(PROXIED, '/api/me', { headers: { 'x-noventis-proxy-key': 'wrong', 'x-noventis-client-ip': '1.1.1.1' } })).status, 403);
   assert.equal((await call(PROXIED, '/api/health', { headers: via('203.0.113.14') })).status, 200);
+});
+
+const lead = (o = {}) => ({ name: 'Али Валиев', phone: '+998 90 123-45-67', city: 'Ташкент', course_id: 'k01', center_id: 'c1',
+  course_title: 'IELTS', center_name: 'Центр', field: 'it', test_summary: { top: [{ f: 'it', p: 80 }] }, countries: ['KR'], unis: ['KAIST'], ...o });
+const postLead = (ip, o, extra = {}) => call(LEADS, '/api/leads', { method: 'POST', headers: via(ip), body: lead(o), ...extra });
+const adm = { 'x-admin-token': ADMIN };
+
+test('заявка: создаётся, телефон нормализуется, JSON сохраняется', async () => {
+  const r = await postLead('203.0.113.30');
+  assert.equal(r.status, 201);
+  const list = await call(LEADS, '/api/admin/leads', { headers: { ...via('203.0.113.30'), ...adm } });
+  const l = list.data.leads.find(x => x.id === r.data.id);
+  assert.equal(l.phone, '+998901234567');
+  assert.equal(l.status, 'new');
+  assert.equal(l.test_summary.top[0].p, 80);
+  assert.equal(l.user_id, null);
+});
+
+test('заявка: ошибки проверки полей', async () => {
+  const ip = '203.0.113.31';
+  const bad = async (o, code, status = 400) => {
+    const r = await postLead(ip, o);
+    assert.equal(r.status, status); assert.equal(r.data.error, code);
+  };
+  await bad({ name: 'А' }, 'name_invalid');
+  await bad({ name: 'x'.repeat(61) }, 'name_invalid');
+  await bad({ phone: '+7 900 123 45 67' }, 'phone_invalid');
+  await bad({ phone: '+99890123' }, 'phone_invalid');
+  await bad({ phone: 12345 }, 'phone_invalid');
+  await bad({ city: '' }, 'city_invalid');
+  await bad({ course_id: '' }, 'course_required');
+  await bad({ center_id: undefined }, 'center_required');
+  await bad({ unis: ['x'.repeat(5000)] }, 'field_too_large');
+  await bad({ countries: 'KR' }, 'field_too_large');
+});
+
+test('заявка: лимит 5 в час на IP+телефон, дубль телефон+курс → 429', async () => {
+  const ip = '203.0.113.32';
+  const first = await postLead(ip, { phone: '+998901110000' });
+  assert.equal(first.status, 201);
+  const dup = await postLead(ip, { phone: '+998 90 111 00 00' });
+  assert.equal(dup.status, 429); assert.equal(dup.data.error, 'duplicate_lead'); assert.ok(dup.data.message);
+  assert.doesNotMatch(dup.data.message, /свяжемся/);
+  const more = [['k02', 'c1'], ['k04', 'c1'], ['k03', 'c4'], ['k18', 'c4']];
+  for (const [course_id, center_id] of more) assert.equal((await postLead(ip, { phone: '+998901110000', course_id, center_id })).status, 201);
+  const over = await postLead(ip, { phone: '+998901110000', course_id: 'k05', center_id: 'c2' });
+  assert.equal(over.status, 429); assert.equal(over.data.error, 'too_many_leads');
+  assert.equal((await postLead(ip, { phone: '+998903330000' })).status, 201, 'другой телефон с того же IP можно');
+  assert.equal((await postLead('203.0.113.33', { phone: '+998901110000', course_id: 'k05', center_id: 'c2' })).status, 201, 'другой IP не затронут');
+});
+
+test('заявка: неверный курс/центр → 400, названия берутся с сервера', async () => {
+  const ip = '203.0.113.40';
+  for (const o of [{ course_id: 'nope' }, { center_id: 'c999' }, { course_id: 'k01', center_id: 'c2' }, { course_id: { a: 1 } }]) {
+    const r = await postLead(ip, { phone: '+998906660000', ...o });
+    assert.equal(r.status, 400); assert.ok(['course_invalid', 'course_required'].includes(r.data.error));
+  }
+  const r = await postLead(ip, { phone: '+998906660001', course_title: 'ПОДДЕЛКА', center_name: 'ФЕЙК', field: 'bogus' });
+  assert.equal(r.status, 201);
+  const l = (await call(LEADS, '/api/admin/leads', { headers: { ...via(ip), ...adm } })).data.leads.find(x => x.id === r.data.id);
+  assert.match(l.course_title, /IELTS/); assert.match(l.center_name, /Demo Lingua/);
+  assert.equal(l.field, ''); assert.equal(l.is_demo, 1);
+});
+
+test('заявка: имя и город из невидимых символов → 400', async () => {
+  const ip = '203.0.113.41';
+  const r1 = await postLead(ip, { name: '​​​﻿  ' });
+  assert.equal(r1.status, 400); assert.equal(r1.data.error, 'name_invalid');
+  const r2 = await postLead(ip, { city: '⁠‍\u0007 ' });
+  assert.equal(r2.status, 400); assert.equal(r2.data.error, 'city_invalid');
+});
+
+test('заявка вошедшего привязана к нему и видна в /api/leads/mine, чужие не видны', async () => {
+  assert.equal((await call(LEADS, '/api/leads/mine', { headers: via('203.0.113.34') })).status, 401);
+  const a = await call(LEADS, '/api/register', { method: 'POST', headers: via('203.0.113.34'), body: { name: 'Тест А', email: uniq('la'), password: '12345678' } });
+  const b = await call(LEADS, '/api/register', { method: 'POST', headers: via('203.0.113.34'), body: { name: 'Тест Б', email: uniq('lb'), password: '12345678' } });
+  assert.equal((await postLead('203.0.113.34', { phone: '+998904440000' }, { cookie: a.cookie })).status, 201);
+  await postLead('203.0.113.35', { phone: '+998904440001' });
+  const mine = await call(LEADS, '/api/leads/mine', { headers: via('203.0.113.34'), cookie: a.cookie });
+  assert.equal(mine.data.leads.length, 1);
+  assert.equal(mine.data.leads[0].phone, '+998904440000');
+  assert.equal(mine.data.leads[0].ip, undefined);
+  assert.equal((await call(LEADS, '/api/leads/mine', { headers: via('203.0.113.34'), cookie: b.cookie })).data.leads.length, 0);
+});
+
+test('админ-заявки: без токена 403, с токеном — список, фильтр, смена статуса, CSV', async () => {
+  const ip = '203.0.113.36';
+  assert.equal((await call(LOCAL, '/api/admin/leads', { headers: adm })).status, 403, 'ADMIN_TOKEN не задан → всегда 403');
+  assert.equal((await call(LEADS, '/api/admin/leads', { headers: via(ip) })).status, 403);
+  assert.equal((await call(LEADS, '/api/admin/leads', { headers: { ...via(ip), 'x-admin-token': 'wrong' } })).status, 403);
+  assert.equal((await call(LEADS, '/api/admin/leads.csv', { headers: via(ip) })).status, 403);
+  assert.equal((await call(LEADS, '/api/admin/leads/1', { method: 'PATCH', headers: via(ip), body: { status: 'sent' } })).status, 403);
+
+  const created = await postLead(ip, { phone: '+998905550000', name: '=HYPERLINK("x")' });
+  const h = { ...via(ip), ...adm };
+  const list = await call(LEADS, '/api/admin/leads?limit=1000', { headers: h });
+  assert.equal(list.status, 200); assert.equal(list.data.limit, 100); assert.ok(list.data.total >= 1);
+  assert.equal((await call(LEADS, '/api/admin/leads?status=bogus', { headers: h })).status, 400);
+
+  assert.equal((await call(LEADS, `/api/admin/leads/${created.data.id}`, { method: 'PATCH', headers: h, body: { status: 'bogus' } })).status, 400);
+  assert.equal((await call(LEADS, `/api/admin/leads/${created.data.id}`, { method: 'PATCH', headers: h, body: { status: 'sent' } })).status, 200);
+  assert.equal((await call(LEADS, '/api/admin/leads/999999', { method: 'PATCH', headers: h, body: { status: 'sent' } })).status, 404);
+  const sent = await call(LEADS, '/api/admin/leads?status=sent', { headers: h });
+  assert.ok(sent.data.leads.some(l => l.id === created.data.id));
+  assert.ok(sent.data.leads.every(l => l.status === 'sent'));
+
+  const r = await fetch(LEADS + '/api/admin/leads.csv', { headers: h });
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /text\/csv/);
+  const csv = await r.text();
+  assert.match(csv, /^﻿?id,created_at,status,name,phone/);
+  assert.ok(csv.includes('+998905550000'));
+  assert.ok(csv.includes("\"'=HYPERLINK(\"\"x\"\")\""), 'формулы в CSV обезврежены');
+  await postLead(ip, { phone: '+998905550001', name: ' =1+1' });
+  const csv2 = await (await fetch(LEADS + '/api/admin/leads.csv', { headers: h })).text();
+  assert.ok(csv2.includes("'=1+1"), 'формула с ведущим пробелом обезврежена');
 });
 
 test('в продакшене кука входа с флагом Secure', async () => {
