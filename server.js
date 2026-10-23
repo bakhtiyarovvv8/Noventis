@@ -18,14 +18,14 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
 const SESSION_DAYS = 30;
 // Секрет, который знает только прокси на Cloudflare. Задан → сервер принимает /api только через Cloudflare.
-const PROXY_KEY = process.env.PROXY_KEY || '';
+const PROXY_KEY = (process.env.PROXY_KEY || '').trim();
 const PROD = process.env.NODE_ENV === 'production';
 
 // Без TURSO_DATABASE_URL работаем с локальным файлом — удобно для разработки.
 fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
 const db = createClient({
-  url: process.env.TURSO_DATABASE_URL || 'file:' + path.join(__dirname, 'data', 'noventis.db').replace(/\\/g, '/'),
-  authToken: process.env.TURSO_AUTH_TOKEN,
+  url: (process.env.TURSO_DATABASE_URL || '').trim() || 'file:' + path.join(__dirname, 'data', 'noventis.db').replace(/\\/g, '/'),
+  authToken: (process.env.TURSO_AUTH_TOKEN || '').trim() || undefined,
 });
 const one = async (sql, ...args) => (await db.execute({ sql, args })).rows[0] || null;
 const all = async (sql, ...args) => (await db.execute({ sql, args })).rows;
@@ -260,7 +260,7 @@ const parseJson = t => { try { return t ? JSON.parse(t) : null; } catch { return
 const leadOut = r => ({ ...r, test_summary: parseJson(r.test_summary), countries: parseJson(r.countries), unis: parseJson(r.unis) });
 
 // доступ админа: заголовок x-admin-token или Authorization: Bearer; без ADMIN_TOKEN (≥16 символов) в .env — всегда 403
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+const ADMIN_TOKEN = (process.env.ADMIN_TOKEN || '').trim();
 function isAdmin(req) {
   if (ADMIN_TOKEN.length < 16) return false;
   const bearer = str(req.headers.authorization).replace(/^Bearer\s+/i, '');

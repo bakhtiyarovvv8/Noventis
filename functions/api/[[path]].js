@@ -7,7 +7,7 @@ export async function onRequest({ request, env }) {
   headers.delete('host');
   // Реальный IP посетителя знает только Cloudflare. Перезаписываем, чтобы подделать его было нельзя.
   headers.set('x-noventis-client-ip', request.headers.get('CF-Connecting-IP') || '');
-  headers.set('x-noventis-proxy-key', env.PROXY_KEY);
+  headers.set('x-noventis-proxy-key', String(env.PROXY_KEY || '').trim());
 
   const init = { method: request.method, headers, redirect: 'manual' };
   if (!['GET', 'HEAD'].includes(request.method)) init.body = await request.arrayBuffer();
